@@ -1,6 +1,6 @@
 # Backends
 
-Run once per session: `node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" detect` and echo its line to the user.
+Run once per session: `node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" detect --cwd "REPO"` (`REPO` = the repo root) and echo its line to the user.
 
 | Backend | When | Cost | Refs |
 |---|---|---|---|
