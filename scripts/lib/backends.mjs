@@ -30,10 +30,10 @@ export function defaultWhich(cmd) {
 // image prompt where a line break carries no semantic meaning to the model.
 function escapeArgForWindowsShell(arg) {
   let a = String(arg).replace(/\r?\n/g, ' ');
-  a = a.replace(/(?=(\\+?)?)\1"/g, '$1$1\\"');
-  a = a.replace(/(?=(\\+?)?)\1$/, '$1$1');
+  a = a.replace(/(\\*)"/g, '$1$1\\"');
+  a = a.replace(/(\\*)$/, '$1$1');
   a = `"${a}"`;
-  a = a.replace(/(["^&|<>()%!])/g, '^$1');
+  a = a.replace(/(["^&|<>()%!;, ])/g, '^$1');
   return a;
 }
 

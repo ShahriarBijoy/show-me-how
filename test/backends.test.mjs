@@ -89,6 +89,40 @@ test('defaultRun passes a tricky argument (quotes, $vars, backticks, cmd.exe met
   }
 });
 
+// Shared helper for the backslash-edge-case tests below: spawns a real child process via
+// defaultRun and returns the argv it actually received, so these tests exercise the real
+// win32 escaping path end-to-end rather than just calling escapeArgForWindowsShell directly.
+async function realSpawnArgv(arg) {
+  const { defaultRun } = await import('../scripts/lib/backends.mjs');
+  const dir = mkdtempSync(join(tmpdir(), 'smh-bs-'));
+  const echoScript = join(dir, 'echo-argv.mjs');
+  writeFileSync(echoScript, `import { writeFileSync } from 'node:fs';\nwriteFileSync(${JSON.stringify(join(dir, 'argv.json'))}, JSON.stringify(process.argv.slice(2)));\n`);
+  const r = await defaultRun(process.execPath, [echoScript, arg], { cwd: dir });
+  assert.equal(r.code, 0, `expected exit 0, got ${r.code}, stderr: ${r.stderr}`);
+  return JSON.parse(readFileSync(join(dir, 'argv.json'), 'utf8'));
+}
+
+// These only exercise defaultRun's win32 escaping path (escapeArgForWindowsShell); on POSIX,
+// defaultRun uses plain shell:false argv passing, which cannot mangle backslashes, so there's
+// nothing platform-specific to verify there.
+test('defaultRun preserves two trailing backslashes (real spawn)', { skip: process.platform !== 'win32' }, async () => {
+  const arg = 'C:\\some\\dir\\\\';
+  const recorded = await realSpawnArgv(arg);
+  assert.deepEqual(recorded, [arg]);
+});
+
+test('defaultRun preserves an even run of backslashes immediately before an embedded quote (real spawn)', { skip: process.platform !== 'win32' }, async () => {
+  const arg = 'say \\\\"hi\\\\" now'; // two literal backslashes before each embedded quote
+  const recorded = await realSpawnArgv(arg);
+  assert.deepEqual(recorded, [arg]);
+});
+
+test('defaultRun preserves a single trailing backslash, e.g. a Windows dir path (real spawn)', { skip: process.platform !== 'win32' }, async () => {
+  const arg = 'C:\\Users\\someone\\';
+  const recorded = await realSpawnArgv(arg);
+  assert.deepEqual(recorded, [arg]);
+});
+
 test('backend.mjs CLI detect prints codex or manual note', () => {
   const out = execFileSync(process.execPath, ['scripts/backend.mjs', 'detect']).toString();
   assert.match(out, /^backend: (codex \(ChatGPT subscription\)|manual \(no image CLI found[^)]*\))\n$/);
