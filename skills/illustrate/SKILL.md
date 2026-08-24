@@ -25,7 +25,7 @@ Read once, before drawing: `references/style-dna.md`, `references/composition-pa
 
 1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/design.mjs" "REPO"` -> JSON (`mascot`, `font`, `colors`, `tone`, `output.docs`, `output.backend`). If `REPO/design.md` does not exist, say once: "No design.md found; using Flow + Caveat defaults. Run /show-me-how:init to customize."
 2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" detect --cwd "REPO"` -> prints `backend: ...`. Echo that line to the user verbatim. If the command errors instead of printing `backend:`, show the error to the user; it means `design.md` pins a backend that is not installed. Ask them to install it or set `backend: auto`, then stop.
-3. `node "${CLAUDE_PLUGIN_ROOT}/scripts/slug.mjs" "<TOPIC>"` -> `SLUG`. `DIR` = `<design.output.docs>` + `SLUG` (single `/` between them, e.g. `docs/show-me-how/label-overlay`). Create `DIR/raw/` (generate creates it anyway).
+3. `node "${CLAUDE_PLUGIN_ROOT}/scripts/slug.mjs" "<TOPIC>"` -> `SLUG`. `DIR` = `<design.output.docs>` + `SLUG` (single `/` between them, e.g. `docs/show-me-how/label-overlay`). Create `DIR/raw/` (generate creates it anyway). If the brief block includes OUTDIR, use it as DIR instead.
 4. Mascot refs: `design.mascot.references` (repo-root-relative) if non-empty, else `${CLAUDE_PLUGIN_ROOT}/assets/flow/front.png`, `.../working.png`, `.../stuck.png`. Drop any path that does not exist; if none exist, pass no `--ref` at all — the character still comes from the prompt text.
 
 ## 1. Anchors
