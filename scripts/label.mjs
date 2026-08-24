@@ -57,7 +57,7 @@ export function renderSvgLayer(spec, width, height) {
   parts.push(...arrowParts(spec, width, height));
   for (const l of spec.labels || []) {
     const size = Math.round(base * (l.size || 1));
-    parts.push(`<text x="${(l.x * width).toFixed(1)}" y="${(l.y * height).toFixed(1)}" font-family="${esc(family)}, cursive" font-size="${size}" fill="${color(l.kind, spec.colors)}" text-anchor="middle">${esc(l.text)}</text>`);
+    parts.push(`<text x="${(l.x * width).toFixed(1)}" y="${(l.y * height).toFixed(1)}" font-family="${esc(family)}, cursive" font-size="${size}" fill="${color(l.kind, spec.colors)}" text-anchor="middle" dominant-baseline="central">${esc(l.text)}</text>`);
   }
   parts.push('</svg>');
   return parts.join('\n');

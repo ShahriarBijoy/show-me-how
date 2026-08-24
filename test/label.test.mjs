@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
@@ -25,6 +25,7 @@ test('svg layer contains labels, colors, font and an arrow path', () => {
   assert.match(svg, /font-family="Caveat/);
   assert.match(svg, /<path[^>]+d="M/);
   assert.match(svg, /x="128(\.\d+)?"/); // 0.2 * 640
+  assert.match(svg, /dominant-baseline="central"/);
 });
 
 test('labelImage writes png of same size plus svg', async () => {
