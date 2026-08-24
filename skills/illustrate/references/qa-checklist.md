@@ -6,7 +6,7 @@
 - Background is clean white.
 - The mascot is present.
 - The mascot carries the core action, not just decoration.
-- No old-case composition copied; a new metaphor was invented for the current article.
+- Fresh metaphor — not reused from another shot in this doc.
 - The image is absurd, creative, interesting.
 - Clean and simple; subject no more than ~60% of the canvas.
 - One image tells only one core structure.
@@ -27,7 +27,7 @@ Regenerate or locally edit if:
 - Background has paper texture, shadow, gradient, beige, noise.
 - Real UI screenshot or techy interface.
 - Too rigid, no absurd metaphor.
-- Too similar to an old case composition in `assets/examples/`.
+- Metaphor or main object repeats an earlier shot in this doc.
 
 ## Iteration moves
 
@@ -35,7 +35,7 @@ Regenerate or locally edit if:
 - Too complex: delete nodes; keep one action and 3-5 label slots.
 - Too cute: emphasize deadpan, blank serious expression, not cute, not mascot-poster.
 - Too PPT: remove title, borders, tidy grid and excess arrows; make it a hand-drawn scene.
-- Too like an old case: keep the core meaning; swap the main object and the mascot's action.
+- Repeats an earlier shot: keep the meaning; swap the main object and the mascot's action.
 - Text appeared in the image: regenerate with a stronger no-text instruction; do not attempt to edit it out.
 
 ## Delivery judgment
