@@ -56,9 +56,9 @@ NN  <structure>   "<title>"
 4. `ok:false` with `promptFile` (manual backend) — tell the user: "Prompt saved to `<promptFile>`. Paste it into ChatGPT/Gemini, save the image as `DIR/raw/NN.png`, then run the same command again; the shot will be picked up and labelled." Mark shot NN **pending**, skip step 3.6 and step 4, go to the next shot.
 5. `ok:false` with `stderr` (codex failed) — show the last 5 lines of `stderr`, then fall back to manual for this shot: point the user at `DIR/raw/NN.prompt.txt` and the same save path, with the same "run the same command again" line. Mark NN **pending**, skip step 3.6 and step 4, go to the next shot.
 6. `ok:true` — view `DIR/raw/NN.png` with the Read tool and check it against every "Must pass" item in `references/qa-checklist.md`. If any of them fails, regenerate exactly once:
-   - Append the matching line from "Iteration moves" in `references/qa-checklist.md` to the end of the existing `DIR/raw/NN.prompt.txt`. For a decorative mascot, append the retry prompt from `references/prompt-template.md` instead. For text in the image, append a stronger no-text instruction — never the mascot-central retry text.
+   - Append the matching line from "Iteration moves" in `references/qa-checklist.md` to the end of the existing `DIR/raw/NN.prompt.txt`. For a decorative mascot, append the retry prompt from `references/prompt-template.md` instead. For text in the image, append a stronger no-text instruction — never the mascot-central retry text. If no move matches the failed item, append the failed "Must pass" line itself as an instruction (e.g. "Make the mascot present and performing the action").
    - The retry text is only ever **appended** to the original filled prompt; never send it on its own.
-   - Delete `DIR/raw/NN.png` first, so a failed retry cannot be reported as `ok:true` on the stale file, then run step 3.3 again with the same paths.
+   - Delete `DIR/raw/NN.png` first, so a failed retry cannot be reported as `ok:true` on the stale file, then run step 3.3 again with the same paths. If the second attempt is also `ok:false`, handle it exactly like step 3.4/3.5 — mark the shot pending and skip step 4.
    - Accept whatever the second attempt gives you. One retry per shot, no more.
 
 ## 4. Label (once per successful shot)
