@@ -23,6 +23,8 @@ Write BRIEF (<=200 words): what changed or what this is, why, how it works, what
 
 ## 3. Illustrate
 
+MAX_IMAGES = 3 if the source is a single short file or one small commit, else 6.
+
 Invoke the `illustrate` skill (`skills/illustrate/SKILL.md`) from its step 0, with this brief block:
 
 ```
@@ -30,7 +32,7 @@ MODE: write-doc
 TOPIC: <TOPIC>
 SOURCES: <the paths/commits from step 1>
 BRIEF: <the text from step 2>
-MAX_IMAGES: 6 (use 3 if the source material is small, e.g. a single short file)
+MAX_IMAGES: <3 or 6>
 ```
 
 ## 4. Report

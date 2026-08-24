@@ -10,8 +10,8 @@ TOPIC = "$ARGUMENTS". If empty, ask the user for a topic and stop — do not gue
 
 ## 1. Gather (read-only, at most 5 files)
 
-1. Grep the repo for the topic words (case-insensitive) across `*.md`, source files, and `docs/`. Grep only — never edit or write during this step.
-2. Rank hits by match count and path relevance: README, `docs/`, ADRs, and entry points first.
+1. Grep the repo for the topic words (case-insensitive) across `*.md`, `docs/`, and code files (`*.ts`, `*.tsx`, `*.js`, `*.mjs`, `*.py`, `*.go`, `*.rs`, `*.java`, `*.cs`, `*.rb`, `*.php`), excluding `node_modules`, `dist`, `build`, and `.git`. Grep only — never edit or write during this step.
+2. Rank hits: primary key is number of matching lines per file (descending); tie-break by path relevance, in this order: README > `docs/` > ADR > entry points > everything else.
 3. Read the top 5 files, or just the relevant sections of larger ones. Record each path read as SOURCES.
 4. If nothing matches, tell the user exactly what you searched (the terms and the globs) and ask them to point at a file or folder instead. Stop.
 

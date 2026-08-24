@@ -33,6 +33,8 @@ Copy `${CLAUDE_PLUGIN_ROOT}/templates/design.md` to `REPO/design.md` and edit in
 
 ## 4. Test image
 
+`<docs>` is the `docs:` folder from the design.md just written (step 2). OUTDIR = `<docs>` with any trailing slash removed, plus `/_test` (no trailing slash, matching illustrate's DIR convention).
+
 Invoke the `illustrate` skill (`skills/illustrate/SKILL.md`) from its step 0, with this brief block:
 
 ```
@@ -41,10 +43,10 @@ TOPIC: show-me-how test
 SOURCES: (none)
 BRIEF: A mascot hands a reader one clear picture instead of three paragraphs.
 MAX_IMAGES: 1
-OUTDIR: <docs>/_test/
+OUTDIR: <that value>
 ```
 
-`<docs>` is the `docs:` folder from the design.md just written (step 2). Per illustrate step 0.3, OUTDIR is used as DIR instead of the slug-derived path.
+Per illustrate step 0.3, OUTDIR is used as DIR instead of the slug-derived path.
 
 ## 5. Report
 
