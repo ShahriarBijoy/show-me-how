@@ -1,6 +1,14 @@
 # show-me-how
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Node >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](package.json)
+[![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-D97757.svg)](https://code.claude.com/docs/en/plugins)
+[![Tests](https://img.shields.io/badge/tests-node%3Atest-informational.svg)](test)
+[![Image backends](https://img.shields.io/badge/backends-codex%20%7C%20manual-lightgrey.svg)](skills/illustrate/references/backends.md)
+
 Explain code, features and PRs with mascot-illustrated plain-language docs. Hand-drawn style, your brand, your font.
+
+A Claude Code plugin. Point it at a feature, a folder, or a topic; it reads the code, picks the 1–6 ideas worth a picture, has a mascot act them out in hand-drawn style, and writes the explainer with the images inline. Works with your ChatGPT subscription (via the Codex CLI) or with any image tool by hand.
 
 <!-- hero image added after first real run -->
 ![example](examples/hero.png)
