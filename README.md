@@ -40,6 +40,7 @@ Requires Node >=18.
 | `/show-me-how:init` | Sets up `design.md` (mascot, font, colors, tone, output folder) and draws one test image. | `/show-me-how:init` |
 | `/show-me-how:explain <topic>` | Explains a feature or concept in chat, with 1-3 illustrations. | `/show-me-how:explain label overlay` |
 | `/show-me-how:write-doc [path\|folder\|topic]` | Writes an illustrated doc under `docs/show-me-how/<topic>/` (default; set `docs:` in design.md). | `/show-me-how:write-doc scripts/` |
+| `/show-me-how:pr-review [pr\|url]` | Draws "the picture of what this PR does" — never posts or commits. | `/show-me-how:pr-review 412` |
 
 ## Backends
 
