@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { detectBackend, generate, buildCodexArgs } from '../scripts/lib/backends.mjs';
+import { detectBackend, generate, buildCodexArgs, defaultWhich } from '../scripts/lib/backends.mjs';
 
 // true when `flag` appears immediately followed by `value` somewhere in argv
 const hasPair = (args, flag, value) => args.some((a, i) => a === flag && args[i + 1] === value);
@@ -68,7 +68,11 @@ test('buildCodexArgs falls back to low for an empty reasoning effort', () => {
 test('buildCodexArgs rejects a reasoning effort codex would not understand', () => {
   assert.throws(
     () => buildCodexArgs({ prompt: 'p', out: 'o.png', cwd: '/w', codexReasoning: 'extreme' }),
-    /codex_reasoning.*"extreme".*minimal | low | medium | high/s,
+    // A regex is a trap here: `minimal | low | medium | high` parses as alternation, so a pattern
+    // meant to demand the whole legal set happily matches any message containing " low ".
+    (e) => /codex_reasoning/.test(e.message)
+      && e.message.includes('"extreme"')
+      && e.message.includes('minimal | low | medium | high'),
   );
 });
 
@@ -207,6 +211,40 @@ test('defaultRun gives the child a closed stdin so a CLI that reads stdin cannot
 test('backend.mjs CLI detect prints codex or manual note', () => {
   const out = execFileSync(process.execPath, ['scripts/backend.mjs', 'detect']).toString();
   assert.match(out, /^backend: (codex \(ChatGPT subscription\)|manual \(no image CLI found[^)]*\))\n$/);
+});
+
+// Helper: run the generate CLI in a temp cwd carrying the given design.md, returning parsed JSON.
+// execFileSync throws on a non-zero exit, so reaching the JSON.parse at all proves exit code 0.
+function runGenerate(designMd) {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-cli-'));
+  writeFileSync(join(dir, 'design.md'), designMd);
+  const promptFile = join(dir, 'p.txt');
+  writeFileSync(promptFile, 'a deadpan blob doing taxes');
+  const out = join(dir, 'raw', '01.png');
+  const stdout = execFileSync(process.execPath, [
+    join(process.cwd(), 'scripts/backend.mjs'), 'generate',
+    '--prompt-file', promptFile, '--out', out, '--cwd', dir,
+  ]).toString();
+  return { dir, out, result: JSON.parse(stdout) };
+}
+
+test('backend.mjs CLI generate reports an unknown backend as ok:false and still exits 0', () => {
+  const { out, result } = runGenerate('## Output\nbackend: bogus\n');
+  assert.equal(result.ok, false);
+  assert.equal(result.backend, 'unknown'); // detection itself threw, so there is no name to report
+  assert.equal(result.out, out);
+  assert.match(result.stderr, /Unknown backend "bogus"/);
+});
+
+// Needs codex on PATH: the codex_reasoning check lives in buildCodexArgs, which only runs once
+// detectBackend has resolved the pinned codex backend.
+test('backend.mjs CLI generate reports a bad codex_reasoning as ok:false and still exits 0', { skip: !defaultWhich('codex') && 'codex not on PATH' }, () => {
+  const { out, result } = runGenerate('## Output\nbackend: codex\ncodex_reasoning: extreme\n');
+  assert.equal(result.ok, false);
+  assert.equal(result.backend, 'codex');
+  assert.equal(result.out, out);
+  assert.match(result.stderr, /codex_reasoning/);
+  assert.match(result.stderr, /extreme/);
 });
 
 test('backend.mjs CLI generate writes a prompt file and exits 0 when pinned to manual', () => {

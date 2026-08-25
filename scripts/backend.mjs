@@ -16,13 +16,23 @@ if (cmd === 'detect') {
   const b = detectBackend({ pinned: design.output.backend });
   console.log(`backend: ${b.note}`);
 } else if (cmd === 'generate') {
-  const b = detectBackend({ pinned: design.output.backend });
-  const prompt = readFileSync(opt['prompt-file'], 'utf8');
-  const r = await generate({
-    backend: b.name, prompt, refs, out: opt.out, cwd,
-    codexModel: design.output.codexModel, codexReasoning: design.output.codexReasoning,
-  });
-  console.log(JSON.stringify(r));
+  // backends.md promises callers "generate always exits 0; read success from the JSON `ok` field".
+  // A bad design.md (unknown backend, unsupported codex_reasoning) throws before generate() can
+  // return, which would break that contract and strand the skill with an unparseable crash. Report
+  // the failure in the same JSON shape instead. `detect` deliberately keeps throwing -- SKILL.md
+  // handles that path and a caller needs the loud failure there.
+  let backendName = 'unknown';
+  try {
+    backendName = detectBackend({ pinned: design.output.backend }).name;
+    const prompt = readFileSync(opt['prompt-file'], 'utf8');
+    const r = await generate({
+      backend: backendName, prompt, refs, out: opt.out, cwd,
+      codexModel: design.output.codexModel, codexReasoning: design.output.codexReasoning,
+    });
+    console.log(JSON.stringify(r));
+  } catch (err) {
+    console.log(JSON.stringify({ ok: false, backend: backendName, out: opt.out, stderr: err.message }));
+  }
 } else {
   console.error('usage: backend.mjs detect | generate --prompt-file P --out OUT [--ref R]...');
   process.exit(2);
