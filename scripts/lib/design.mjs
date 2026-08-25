@@ -11,7 +11,7 @@ export const DEFAULTS = Object.freeze({
   font: { labels: 'Caveat' },
   colors: { flow: '#F28C28', warn: '#D93025', note: '#1A73E8' },
   tone: 'deadpan, absurd, clean',
-  output: { docs: 'docs/show-me-how/', backend: 'auto' },
+  output: { docs: 'docs/show-me-how/', backend: 'auto', codexModel: '', codexReasoning: 'low' },
 });
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -57,7 +57,11 @@ export function parseDesign(text) {
       else if (section === 'colors' && k in d.colors) {
         if (!HEX.test(v)) throw new Error(`design.md: color "${k}" must be a 6-digit hex like #F28C28, got "${v}"`);
         d.colors[k] = v.toUpperCase();
-      } else if (section === 'output' && k in d.output) d.output[k] = v;
+      } else if (section === 'output') {
+        // snake_case in design.md, camelCase in the parsed object
+        const key = { codex_model: 'codexModel', codex_reasoning: 'codexReasoning' }[k] ?? k;
+        if (key in d.output) d.output[key] = v;
+      }
       continue;
     }
     if (section === 'tone') d.tone = line.trim();

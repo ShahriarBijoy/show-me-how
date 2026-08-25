@@ -25,3 +25,5 @@ deadpan, absurd, clean
 ## Output
 docs: docs/show-me-how/
 backend: auto      # auto | codex | manual
+codex_model:       # codex model for image generation; empty = codex's own default
+codex_reasoning: low   # codex reasoning effort: minimal | low | medium | high

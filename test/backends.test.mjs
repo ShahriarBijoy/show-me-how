@@ -6,6 +6,9 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { detectBackend, generate, buildCodexArgs } from '../scripts/lib/backends.mjs';
 
+// true when `flag` appears immediately followed by `value` somewhere in argv
+const hasPair = (args, flag, value) => args.some((a, i) => a === flag && args[i + 1] === value);
+
 test('detect prefers codex when present', () => {
   const r = detectBackend({ which: (c) => c === 'codex' });
   assert.equal(r.name, 'codex');
@@ -23,10 +26,48 @@ test('pinned backend wins even if missing (error surfaces)', () => {
 
 test('buildCodexArgs includes refs and out path in prompt', () => {
   const args = buildCodexArgs({ prompt: 'draw x', refs: ['a.png', 'b.png'], out: 'raw/01.png', cwd: '/w' });
-  assert.deepEqual(args.slice(0, 7), ['exec', '-C', '/w', '-s', 'workspace-write', '--skip-git-repo-check', '-i']);
+  assert.deepEqual(args.slice(0, 9), ['exec', '-C', '/w', '-s', 'workspace-write', '--skip-git-repo-check', '--enable', 'image_generation', '-i']);
   assert.ok(args.includes('a.png') && args.includes('b.png'));
   assert.match(args.at(-1), /raw\/01\.png/);
   assert.match(args.at(-1), /draw x/);
+});
+
+test('buildCodexArgs enables the image_generation feature, without which codex has no image tool', () => {
+  assert.ok(hasPair(buildCodexArgs({ prompt: 'p', out: 'o.png', cwd: '/w' }), '--enable', 'image_generation'));
+});
+
+test('buildCodexArgs names the $imagegen skill, forbids code-drawn art, and asks for a copy to out', () => {
+  const instruction = buildCodexArgs({ prompt: 'p', out: 'raw/o.png', cwd: '/w' }).at(-1);
+  assert.match(instruction, /\$imagegen/);
+  // image_gen has no destination argument; it writes under $CODEX_HOME and the agent copies it out
+  assert.match(instruction, /generated_images/);
+  assert.match(instruction, /copy the selected output to exactly this path: "raw\/o\.png"/);
+  assert.match(instruction, /Do not substitute SVG/);
+  assert.match(instruction, /Do not use the scripts\/image_gen\.py CLI fallback/);
+});
+
+test('buildCodexArgs always sets the reasoning effort and omits -m unless a model is given', () => {
+  const noModel = buildCodexArgs({ prompt: 'p', out: 'o.png', cwd: '/w', codexReasoning: 'low' });
+  assert.ok(hasPair(noModel, '-c', 'model_reasoning_effort=low'));
+  assert.ok(!noModel.includes('-m'));
+
+  const withModel = buildCodexArgs({ prompt: 'p', out: 'o.png', cwd: '/w', codexModel: 'gpt-5.1-codex-max', codexReasoning: 'high' });
+  assert.ok(hasPair(withModel, '-m', 'gpt-5.1-codex-max'));
+  assert.ok(hasPair(withModel, '-c', 'model_reasoning_effort=high'));
+});
+
+test('buildCodexArgs defaults the reasoning effort to low', () => {
+  assert.ok(hasPair(buildCodexArgs({ prompt: 'p', out: 'o.png', cwd: '/w' }), '-c', 'model_reasoning_effort=low'));
+});
+
+test('generate threads codexModel/codexReasoning through to the codex argv', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-'));
+  const out = join(dir, '01.png');
+  let seen;
+  const run = async (cmd, args) => { seen = args; writeFileSync(out, 'png'); return { code: 0, stdout: '', stderr: '' }; };
+  await generate({ backend: 'codex', prompt: 'p', out, cwd: dir, run, codexModel: 'gpt-5.1-codex', codexReasoning: 'medium' });
+  assert.ok(hasPair(seen, '-m', 'gpt-5.1-codex'));
+  assert.ok(hasPair(seen, '-c', 'model_reasoning_effort=medium'));
 });
 
 test('manual generate writes prompt file and returns ok=false', async () => {
@@ -121,6 +162,24 @@ test('defaultRun preserves a single trailing backslash, e.g. a Windows dir path 
   const arg = 'C:\\Users\\someone\\';
   const recorded = await realSpawnArgv(arg);
   assert.deepEqual(recorded, [arg]);
+});
+
+// Regression test for a silent hang: codex exec reads stdin when stdin is a pipe, and the default
+// child stdio leaves that pipe open forever. The child below only exits once its stdin reaches EOF,
+// so if defaultRun ever goes back to piping stdin this test hangs instead of failing fast.
+test('defaultRun gives the child a closed stdin so a CLI that reads stdin cannot hang', async () => {
+  const { defaultRun } = await import('../scripts/lib/backends.mjs');
+  const dir = mkdtempSync(join(tmpdir(), 'smh-stdin-'));
+  const script = join(dir, 'drain-stdin.mjs');
+  writeFileSync(script, [
+    "let n = 0;",
+    "process.stdin.on('data', (d) => { n += d.length; });",
+    "process.stdin.on('end', () => { console.log('EOF after ' + n + ' bytes'); });",
+    "process.stdin.resume();",
+  ].join('\n'));
+  const r = await defaultRun(process.execPath, [script], { cwd: dir });
+  assert.equal(r.code, 0, `expected exit 0, got ${r.code}, stderr: ${r.stderr}`);
+  assert.match(r.stdout, /EOF after 0 bytes/);
 });
 
 test('backend.mjs CLI detect prints codex or manual note', () => {

@@ -24,6 +24,22 @@ test('custom overrides merge over defaults', () => {
   assert.equal(d.tone, DEFAULTS.tone);
 });
 
+test('codex model/effort defaults', () => {
+  assert.equal(DEFAULTS.output.codexModel, '');
+  assert.equal(DEFAULTS.output.codexReasoning, 'low');
+});
+
+test('codex_model and codex_reasoning parse from the Output section', () => {
+  const d = parseDesign(['## Output', 'codex_model: gpt-5.1-codex-max', 'codex_reasoning: medium', ''].join('\n'));
+  assert.equal(d.output.codexModel, 'gpt-5.1-codex-max');
+  assert.equal(d.output.codexReasoning, 'medium');
+});
+
+test('an empty codex_model keeps the codex default', () => {
+  const d = parseDesign(['## Output', 'codex_model:', ''].join('\n'));
+  assert.equal(d.output.codexModel, '');
+});
+
 test('invalid color throws a clear error', () => {
   assert.throws(() => parseDesign('## Colors\nflow: red\n'), /flow.*hex/i);
 });

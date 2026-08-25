@@ -46,7 +46,7 @@ Requires Node >=18.
 
 v1 tries, in order: `codex` CLI (ChatGPT subscription, auto-detected on PATH), then falls back to manual — a prompt file is written for you to paste into ChatGPT/Gemini and save back.
 
-Pin one instead of auto-detecting by setting `backend:` in `design.md` (`auto`, `codex`, or `manual`).
+Pin one instead of auto-detecting by setting `backend:` in `design.md` (`auto`, `codex`, or `manual`); `codex_model:` and `codex_reasoning:` in the same section tune which codex model drives the drawing and how hard it thinks (default: codex's own model at `low` effort).
 
 If you have `openai/codex-plugin-cc` installed, `/codex:rescue` can run the same prompt; it's not required.
 

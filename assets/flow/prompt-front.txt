@@ -1,0 +1,12 @@
+One standalone 16:9 landscape illustration, 2048x1152.
+
+Visual DNA: opaque pure white background, RGB 255,255,255 -- NOT transparent, no alpha channel, the background must be painted white. Minimal black hand-drawn line art, thin slightly wobbly pen lines. Every object, including props, is drawn as thin black outlines on white with no fill: no brown, no wood grain, no paper texture, no cross-hatching, no stippling, no shading, no gradients, no drop shadows. Lots of empty white space; the subject fills 40-60% of the canvas. Clean, absurd product-sketch feeling. No background scenery, no ground plane, no vector/corporate style, no infographic or slide look, no cute mascot poster, no children's illustration, no UI screenshots, no sweat drops, no motion scribbles.
+
+ABSOLUTELY NO TEXT, LETTERS, NUMBERS OR LABELS anywhere in the image. Leave clear empty space beside each key object where a label could be written later.
+
+Recurring character (required): Flow: a small solid-black blob with a slightly irregular hand-drawn outline; two white dot eyes and no mouth; thin stick legs, and thin stick arms only when holding, pulling or pushing something; the body can stretch and squash. Deadpan and serious about an absurd job, a low-key operator inside the system, a bit clumsy but never stupid. Never: cute, sparkly eyes, blush, clothing, hats, accessories, a mouth-smile, standing in the corner watching, more than one Flow in the picture. Flow must PERFORM the core action of the idea, not stand beside it. Deadpan, slightly bizarre, not cute. Flow is the ONLY solid-black filled shape in the picture.
+
+Idea to explain: This is Flow, the character who will appear in every later illustration.
+Structure: metaphor
+Scene: Flow standing alone, centered, facing the viewer, nothing else in the frame. Whole body visible, feet on an implied ground line that is not drawn. Arms not needed. Perfectly still, deadpan, looking straight out of the picture. No props, no floor, no horizon, no scenery
+Accent color (sparingly, only for the main movement/arrow if any): none, use no accent colour at all. Everything else black on white.

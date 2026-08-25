@@ -18,7 +18,10 @@ if (cmd === 'detect') {
 } else if (cmd === 'generate') {
   const b = detectBackend({ pinned: design.output.backend });
   const prompt = readFileSync(opt['prompt-file'], 'utf8');
-  const r = await generate({ backend: b.name, prompt, refs, out: opt.out, cwd });
+  const r = await generate({
+    backend: b.name, prompt, refs, out: opt.out, cwd,
+    codexModel: design.output.codexModel, codexReasoning: design.output.codexReasoning,
+  });
   console.log(JSON.stringify(r));
 } else {
   console.error('usage: backend.mjs detect | generate --prompt-file P --out OUT [--ref R]...');

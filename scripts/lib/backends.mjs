@@ -37,14 +37,21 @@ function escapeArgForWindowsShell(arg) {
   return a;
 }
 
+// stdin MUST be 'ignore', not the default 'pipe'. `codex exec` checks whether stdin is a pipe and,
+// if it is, blocks reading it for extra prompt input ("Reading additional input from stdin...").
+// With the default stdio the parent holds that pipe open forever, so codex waits forever, burning
+// no CPU and writing no session -- a silent hang that looks exactly like a slow model. Handing it
+// an already-closed stdin makes it skip that path and start immediately.
+const STDIO = ['ignore', 'pipe', 'pipe'];
+
 export function defaultRun(cmd, args, { cwd } = {}) {
   return new Promise((res) => {
     let p;
     if (isWin) {
       const commandLine = [escapeArgForWindowsShell(cmd), ...args.map(escapeArgForWindowsShell)].join(' ');
-      p = spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', commandLine], { cwd, windowsVerbatimArguments: true });
+      p = spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', commandLine], { cwd, windowsVerbatimArguments: true, stdio: STDIO });
     } else {
-      p = spawn(cmd, args, { cwd, shell: false });
+      p = spawn(cmd, args, { cwd, shell: false, stdio: STDIO });
     }
     let stdout = '', stderr = '';
     p.stdout.on('data', d => stdout += d); p.stderr.on('data', d => stderr += d);
@@ -68,19 +75,40 @@ export function detectBackend({ pinned = 'auto', which = defaultWhich } = {}) {
   return { name: 'manual', note: NOTES.manual };
 }
 
-export function buildCodexArgs({ prompt, refs = [], out, cwd }) {
-  const args = ['exec', '-C', cwd, '-s', 'workspace-write', '--skip-git-repo-check'];
+// codex ships an image tool but does NOT expose it by default: a plain `codex exec` session only
+// gets shell/file tools, so asking it for a picture makes it try to *draw one with code*, which is
+// both wrong and slow. `--enable image_generation` (verified against codex 0.149.0, see
+// task-10-report.md) turns on the real `image_gen` tool plus `view_image`.
+const ENABLE_IMAGE_TOOL = ['--enable', 'image_generation'];
+
+export function buildCodexArgs({ prompt, refs = [], out, cwd, codexModel = '', codexReasoning = 'low' }) {
+  const args = ['exec', '-C', cwd, '-s', 'workspace-write', '--skip-git-repo-check', ...ENABLE_IMAGE_TOOL];
   for (const r of refs) args.push('-i', r);
+  // Drawing does not need deep reasoning; low effort is faster and cheaper. An empty model
+  // means "whatever codex is configured to use", so only pass -m when one was chosen.
+  if (codexModel) args.push('-m', codexModel);
+  args.push('-c', `model_reasoning_effort=${codexReasoning}`);
+  // Three things this instruction has to get right, all learned the hard way (task-10-report.md):
+  //   1. Name the `$imagegen` skill explicitly. "Create an image" on its own reads as an ordinary
+  //      coding task and codex answers it by *drawing with code* (SVG/PIL), which is not what we want.
+  //   2. `image_gen` takes no destination argument -- it saves under $CODEX_HOME/generated_images/.
+  //      The agent has to copy the chosen output to `out` afterwards, so we ask for that in words.
+  //   3. Forbid the scripts/image_gen.py CLI fallback: it needs an OPENAI_API_KEY, which a
+  //      subscription user does not have, so falling back to it just burns a run.
   const instruction =
-    `Use the built-in image generation tool (image_gen) to generate exactly one image and save it to "${out}" ` +
-    `(create parent folders if needed). Landscape 16:9. ` +
-    (refs.length ? `Use the attached image(s) as style references for the mascot character. ` : '') +
+    `Use the $imagegen skill to generate exactly ONE image with its built-in image_gen tool. ` +
+    `The image_gen tool takes no destination argument: it saves under $CODEX_HOME/generated_images/. ` +
+    `After generating, copy the selected output to exactly this path: "${out}" ` +
+    `(create parent folders if needed), then report that path. Landscape 16:9. ` +
+    (refs.length ? `The attached image(s) are style references for the mascot character -- reference role, not edit targets. ` : '') +
+    `Do not use the scripts/image_gen.py CLI fallback. Do not substitute SVG, HTML/CSS, canvas, ` +
+    `Python/PIL or any other code-drawn placeholder art; if image_gen is unavailable, stop and say so. ` +
     `Do not write any other files. Do not ask questions. Image prompt follows.\n\n${prompt}`;
   args.push(instruction);
   return args;
 }
 
-export async function generate({ backend, prompt, refs = [], out, cwd = process.cwd(), run = defaultRun }) {
+export async function generate({ backend, prompt, refs = [], out, cwd = process.cwd(), run = defaultRun, codexModel = '', codexReasoning = 'low' }) {
   out = resolve(cwd, out);
   mkdirSync(dirname(out), { recursive: true });
   if (backend === 'manual') {
@@ -89,7 +117,7 @@ export async function generate({ backend, prompt, refs = [], out, cwd = process.
     return { ok: false, backend, out, promptFile };
   }
   if (backend === 'codex') {
-    const r = await run('codex', buildCodexArgs({ prompt, refs, out, cwd }), { cwd });
+    const r = await run('codex', buildCodexArgs({ prompt, refs, out, cwd, codexModel, codexReasoning }), { cwd });
     const ok = r.code === 0 && existsSync(out);
     return { ok, backend, out, stderr: ok ? undefined : (r.stderr || r.stdout).slice(-2000) };
   }
