@@ -14,8 +14,11 @@ Recurring character (required): {mascot.name}: {mascot.description}. Never: {mas
 Idea to explain: {core idea, one sentence}
 Structure: {before-after | flow | system-part | states | metaphor | layers | route | comic}
 Scene: {where the mascot is, what it is physically doing, the 1-2 low-tech objects, how things move}
+Continuity: {previous_panel}
 Accent color (sparingly, only for the main movement/arrow if any): {colors.flow}. Everything else black on white.
 ```
+
+`{previous_panel}` is `This is the first panel.` for panel 01. For every later panel it is: `Panel N-1 showed <one sentence: the scene and main object of the previous panel>. Same character, same drawing style, same main object where it still applies; continue the scene, but the character must now do a different physical action.`
 
 Retry prompt (QA failed on "mascot decorative"):
 ```text

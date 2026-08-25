@@ -52,12 +52,20 @@ Good for: failure -> success, the real process, complaints, before/after using s
 
 How: 2-4 small scenes, one action per panel.
 
-## Dev-doc anchors (what usually deserves a picture in a codebase)
-- Before / after a change (the PR shot)
-- The path a request takes (who calls whom, 3-5 nodes max)
-- The one gotcha (expiry, race, retry, cache miss)
-- State change (draft -> review -> merged; queued -> running -> done)
-- Ownership / handoff (which service or team hands what to whom)
+## Beat sheet (what each panel of a storybook does)
+
+Panels are read in order, like a short comic. Each panel is one beat:
+
+1. **Setup** — the thing exists, or the request arrives. Establish the object and the mascot.
+2. **Action** — the mechanism: what actually happens. May split into two panels for a big feature.
+3. **Twist** — the gotcha, the failure, the surprising rule. Only if the brief has one.
+4. **Payoff** — the result, or what the reader must now do.
+
+Panel count -> beats: 1 = a single before/after; 2 = setup + action; 3 = setup + action + (twist or payoff); 4-5 = all beats, action may split.
+
+Continuity rule: one mascot, one drawing style, and the main object may carry across panels. What must change every panel is the mascot's physical action. A twist panel is the one place to introduce a second object (the thing that goes wrong).
+
+What usually earns a beat in a codebase: before/after a change; the path a request takes (3-5 nodes max); the one gotcha (expiry, race, retry, cache miss); a state change (draft -> review -> merged); an ownership handoff.
 
 ## Original-metaphor method
 
