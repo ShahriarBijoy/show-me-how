@@ -1,6 +1,6 @@
 ---
 name: pr-review
-description: Draw the picture of what a PR does — before/after and request-path illustrations plus a brief summary, saved under docs/show-me-how/pr-<n>-<slug>/. Not a bug/style review; see /code-review for that.
+description: Draw the picture of what a PR does — before/after and request-path illustrations plus a brief summary, saved as docs/show-me-how/pr-<n>-<slug>/pr-<n>-<slug>.md. Not a bug/style review; see /code-review for that.
 disable-model-invocation: true
 ---
 
@@ -29,12 +29,12 @@ Write BRIEF (<=200 words): what changed, why (from the body/commits), how the pi
 
 ## 4. Illustrate
 
-MAX_IMAGES = 1 if the PR touches <=2 files, else 2. Anchor preference: before/after first, then the request/data path.
+MAX_IMAGES = 1 if the PR touches <=2 files, else 2. Beats: a single before/after panel, or setup (before) + payoff (after) with the request/data path as the action if there are 2.
 
 Invoke the `illustrate` skill (`skills/illustrate/SKILL.md`) from its step 0, with this brief block:
 
 ```
-MODE: write-doc
+MODE: doc
 TOPIC: pr-N-<title>
 SOURCES: <files changed from step 2.1>, <URL>
 BRIEF: <the text from step 3>
@@ -43,7 +43,7 @@ MAX_IMAGES: <1 or 2>
 
 ## 5. Report
 
-Illustrate writes `docs/show-me-how/pr-N-<slug>/README.md`. After it finishes, print:
+Illustrate writes `docs/show-me-how/pr-N-<slug>/pr-N-<slug>.md`. After it finishes, print:
 1. A 5-line "what this PR does" summary.
 2. The image paths it produced.
 3. The doc path.

@@ -1,6 +1,6 @@
 ---
 name: explain
-description: Explain a feature, module, or concept from this repo in plain language with 1-3 mascot illustrations.
+description: Explain a feature, module, or concept from this repo as a short storybook — 1-3 mascot panels with captions — shown in chat and saved under docs/show-me-how/<topic>/<topic>.md.
 disable-model-invocation: true
 ---
 
@@ -31,4 +31,4 @@ BRIEF: <the text from step 2>
 MAX_IMAGES: 3
 ```
 
-Let illustrate produce the chat answer and images; do not duplicate its output.
+Illustrate prints the finished storybook in chat and saves it as `<docs>/<slug>/<slug>.md`; do not duplicate its output.

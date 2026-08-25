@@ -1,6 +1,6 @@
 ---
 name: write-doc
-description: Write an illustrated explainer doc for a feature, folder, or recent change, saved under docs/show-me-how/<topic>/.
+description: Write an illustrated explainer doc for a feature, folder, or recent change, saved as docs/show-me-how/<topic>/<topic>.md.
 disable-model-invocation: true
 ---
 
@@ -28,7 +28,7 @@ MAX_IMAGES = 3 for a small source (a single short file, one small commit); 4-6 o
 Invoke the `illustrate` skill (`skills/illustrate/SKILL.md`) from its step 0, with this brief block:
 
 ```
-MODE: write-doc
+MODE: doc
 TOPIC: <TOPIC>
 SOURCES: <the paths/commits from step 1>
 BRIEF: <the text from step 2>
@@ -37,4 +37,4 @@ MAX_IMAGES: <3, or 4-6>
 
 ## 4. Report
 
-After illustrate finishes, print the doc path (`DIR/README.md`) and a 3-line summary of what it covers. Suggest that the user add `docs/show-me-how/**/raw/` to their `.gitignore` so prompts and unlabelled generations stay out of the repo — suggest only, never edit `.gitignore` for them. Do not commit anything, and do not tell the user to commit it for them — leave that to them.
+After illustrate finishes, print the doc path (`DIR/<slug>.md`) and a 3-line summary of what it covers. Illustrate already suggests the `.show-me-how/` gitignore line; do not repeat it, and never edit `.gitignore`. Do not commit anything, and do not tell the user to commit it for them — leave that to them.
