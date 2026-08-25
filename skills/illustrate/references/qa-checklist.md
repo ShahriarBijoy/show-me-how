@@ -6,7 +6,7 @@
 - Background is clean white.
 - The mascot is present.
 - The mascot carries the core action, not just decoration.
-- Fresh metaphor — not reused from another shot in this doc.
+- Continuity — same mascot and drawing style as the previous panel; the mascot's physical action is different from every earlier panel (the main object may carry over).
 - The image is absurd, creative, interesting.
 - Clean and simple; subject no more than ~60% of the canvas.
 - One image tells only one core structure.
@@ -27,7 +27,7 @@ Regenerate or locally edit if:
 - Background has paper texture, shadow, gradient, beige, noise.
 - Real UI screenshot or techy interface.
 - Too rigid, no absurd metaphor.
-- Metaphor or main object repeats an earlier shot in this doc.
+- The mascot performs the same action as an earlier panel, or the style/character drifts from the previous panel.
 
 ## Iteration moves
 
@@ -35,7 +35,7 @@ Regenerate or locally edit if:
 - Too complex: delete nodes; keep one action and 3-5 label slots.
 - Too cute: emphasize deadpan, blank serious expression, not cute, not mascot-poster.
 - Too PPT: remove title, borders, tidy grid and excess arrows; make it a hand-drawn scene.
-- Repeats an earlier shot: keep the meaning; swap the main object and the mascot's action.
+- Repeats an earlier panel's action: keep the meaning and the main object; give the mascot a different physical action.
 - Text appeared in the image: regenerate with a stronger no-text instruction; do not attempt to edit it out.
 
 ## Delivery judgment

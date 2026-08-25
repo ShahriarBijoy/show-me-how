@@ -23,7 +23,7 @@ Write BRIEF (<=200 words): what changed or what this is, why, how it works, what
 
 ## 3. Illustrate
 
-MAX_IMAGES = 3 for a small source (a single short file, one small commit); 4-6 only for a large multi-file feature. Prefer fewer.
+MAX_IMAGES = 3 for a small source (a single short file, one small commit); 4-5 only for a large multi-file feature. Prefer fewer.
 
 Invoke the `illustrate` skill (`skills/illustrate/SKILL.md`) from its step 0, with this brief block:
 
@@ -32,7 +32,7 @@ MODE: doc
 TOPIC: <TOPIC>
 SOURCES: <the paths/commits from step 1>
 BRIEF: <the text from step 2>
-MAX_IMAGES: <3, or 4-6>
+MAX_IMAGES: <3, or 4-5>
 ```
 
 ## 4. Report

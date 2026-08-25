@@ -71,7 +71,7 @@ Illustrate step 1 becomes a beat sheet. Panels must read as a sequence with one 
 3. **Twist** — the gotcha or failure, if the brief has one.
 4. **Payoff** — the result / what the reader should now do.
 
-2 panels = setup + action. 3 = + twist or payoff. 4-5 = all beats, action may split in two. `MAX_IMAGES` caps still apply (explain 3, write-doc 3 or 4-6, pr-review 1-2; a 1-panel pr-review is a single "before/after" beat).
+2 panels = setup + action. 3 = + twist or payoff. 4-5 = all beats, action may split in two. `MAX_IMAGES` caps still apply (explain 3, write-doc 3 or 4-5, pr-review 1-2; a 1-panel pr-review is a single "before/after" beat).
 
 Prompt template gets a `{previous_panel}` slot: for panel N>1, a one-line description of panel N-1's scene and object, with the instruction "same character, same style, continue the scene". Metaphor rule is relaxed from "never reuse a main object across shots" to "the main object may carry across panels; the mascot's action must change every panel".
 

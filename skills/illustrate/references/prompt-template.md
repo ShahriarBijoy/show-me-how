@@ -1,6 +1,6 @@
 # Image prompt template (no text in image)
 
-Fill every {slot}. One prompt per shot. Send via `scripts/backend.mjs generate`.
+Fill every {slot}. One prompt per panel. Send via `scripts/backend.mjs generate`.
 
 ```text
 One standalone 16:9 landscape illustration, 2048x1152.

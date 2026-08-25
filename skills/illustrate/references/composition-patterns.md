@@ -89,4 +89,4 @@ Reinvent the metaphor from the current article every time; never reuse old image
 
 ## Anti-copy rules
 
-Do not reuse a metaphor you used earlier in the same doc. Invent one per anchor from the article's own nouns.
+Across panels of one storybook, keep the mascot and main object consistent; change the mascot's action every panel. Invent a fresh metaphor per storybook, not per panel.

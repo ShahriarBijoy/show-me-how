@@ -31,7 +31,7 @@ Before any script call below: if `${CLAUDE_PLUGIN_ROOT}/node_modules/sharp` is m
 1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/design.mjs" "REPO"` -> JSON (`mascot`, `font`, `colors`, `tone`, `output.docs`, `output.backend`). If `REPO/design.md` does not exist, say once: "No design.md found; using Flow + Caveat defaults. Run /show-me-how:init to customize."
 2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" detect --cwd "REPO"` -> prints `backend: ...`. Echo that line to the user verbatim. If the command errors instead of printing `backend:`, show the error; it means `design.md` pins a backend that is not installed. Ask them to install it or set `backend: auto`, then stop.
 3. `node "${CLAUDE_PLUGIN_ROOT}/scripts/slug.mjs" "<TOPIC>"` -> `SLUG`.
-   - `DIR` = `<design.output.docs>` + `/` + `SLUG` (e.g. `docs/show-me-how/label-overlay`), or `OUTDIR` if the brief block has one.
+   - `DIR` = `<design.output.docs>` joined with `SLUG` with exactly one `/` between them (`output.docs` may end in `/`) (e.g. `docs/show-me-how/label-overlay`), or `OUTDIR` if the brief block has one.
    - `DOC` = `DIR/SLUG.md` (e.g. `docs/show-me-how/label-overlay/label-overlay.md`).
    - `SCRATCH` = `REPO/.show-me-how/SLUG`. Create `DIR` and `SCRATCH` (`mkdir -p`).
 4. Mascot refs: `design.mascot.references` (repo-root-relative) if non-empty, else `${CLAUDE_PLUGIN_ROOT}/assets/flow/front.png`, `.../working.png`, `.../stuck.png`. Drop any path that does not exist; if none exist, pass no `--ref` at all — the character still comes from the prompt text.
@@ -61,11 +61,11 @@ NN  <beat>  <structure>   "<title>"
    ```
    node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" generate --prompt-file "SCRATCH/NN.prompt.txt" --out "SCRATCH/NN.png" --ref "<ref1>" --ref "<ref2>" --cwd "REPO"
    ```
-   Each command always exits 0. Read success from its JSON `ok` field, never from the exit code. Tell the user how many generations are running.
+   Each command always exits 0. Read success from its JSON `ok` field, never from the exit code. Tell the user how many generations are running. Each background call returns a shell/task id. Wait for that shell to **exit** (use its completion notification or poll its output) before reading the JSON line. An empty or partial read means it is still running — never treat it as a failure.
 
 ## 3b. Collect, in whatever order they finish
 
-Handle each result as it arrives; do not wait for all of them before starting QA on the first.
+Handle each result as its shell exits; do not wait for all of them before starting QA on the first.
 
 1. `ok:false` with `promptFile` (manual backend) — collect all such panels, then tell the user once: "Prompts saved to `<promptFile>` (one per panel). Paste each into ChatGPT/Gemini, save the image as `SCRATCH/NN.png`, then re-run the same slash command; saved panels are picked up and labelled." Mark each **pending**.
 2. `ok:false` with `stderr` (codex failed) — show the last 5 lines of `stderr`, then point the user at `SCRATCH/NN.prompt.txt` and the same save path with the same re-run line. Mark **pending**.
@@ -116,11 +116,11 @@ Only after every panel is either labelled or pending. Write `DOC` exactly in thi
 
 Word budget: each caption <=40 words; hook + captions + Remember together <=120 words for up to 3 panels, <=180 for 4-5. Plain language, no jargon dumps. Image links are relative to `DIR`, so no folder prefix.
 
-For a pending panel write `![<title> — pending](../../../.show-me-how/SLUG/NN.png)` (adjust the `../` depth so the path resolves from `DIR` to `SCRATCH`) followed by one line: `_Pending: prompt at <prompt file>._`
+For a pending panel, write `![<title> — pending](<REL>/.show-me-how/SLUG/NN.png)` where `<REL>` is one `..` per path segment of `DIR` relative to `REPO` (default `docs/show-me-how/<slug>` → `../../..`), followed by one line: `_Pending: prompt at <prompt file>._`
 
 ## 6. Clean up and finish
 
 1. If **no** panel is pending: delete `SCRATCH` (only `REPO/.show-me-how/SLUG`, never `.show-me-how` itself). If deleting fails, say so in one line and continue. If any panel is pending, keep `SCRATCH` and say it is kept for the re-run.
-2. `DIR` must now contain only `SLUG.md` and `NN.png` files. List it; if anything else is there, delete it and say what you removed.
+2. `DIR` must now contain only `SLUG.md` and `NN.png` files. List it. Delete only leftovers this plugin itself produces — `NN-*.png`, `NN-*.svg`, `README.md`, and a `raw/` folder from a v0.1 run. Anything else (other files, other folders) is the user's: leave it and tell them it is there.
 3. `MODE=explain`: print the full contents of `DOC` in chat. `MODE=doc`: do not.
 4. Print exactly: how many panels were produced, which backend was used, the path to `DOC`, and which panel numbers are pending with each one's prompt file — or "none pending". Then suggest, without editing anything: "Add `.show-me-how/` to your `.gitignore` to keep prompts and unlabelled generations out of the repo." Do not commit anything.

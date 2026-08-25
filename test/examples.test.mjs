@@ -2,8 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const EXAMPLES = new URL('../examples/', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+const EXAMPLES = fileURLToPath(new URL('../examples/', import.meta.url));
 
 const folders = readdirSync(EXAMPLES).filter((f) => statSync(join(EXAMPLES, f)).isDirectory());
 

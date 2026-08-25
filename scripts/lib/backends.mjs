@@ -89,7 +89,7 @@ export function buildCodexArgs({ prompt, refs = [], out, cwd, codexModel = '', c
   // `-C` sets codex's working directory, and `-s workspace-write` grants write access to that whole
   // tree. Handing it the repo root would let a drawing run modify any file in the user's repo, so
   // the sandbox is scoped to the shot's own output folder -- the only place this run should write.
-  // Everything else therefore has to be absolute: once codex is chdir'd into raw/, a relative `out`
+  // Everything else therefore has to be absolute: once codex is chdir'd into the scratch folder, a relative `out`
   // or `-i` ref would resolve against the wrong directory.
   const absOut = resolve(cwd, out);
   const absRefs = refs.map((r) => resolve(cwd, r));
