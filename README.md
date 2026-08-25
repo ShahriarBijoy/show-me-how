@@ -8,37 +8,34 @@
 
 Explain code, features and PRs with mascot-illustrated plain-language docs. Hand-drawn style, your brand, your font.
 
-A Claude Code plugin. Point it at a feature, a folder, or a topic; it reads the code, picks the 1–6 ideas worth a picture, has a mascot act them out in hand-drawn style, and writes the explainer with the images inline. Works with your ChatGPT subscription (via the Codex CLI) or with any image tool by hand.
+A Claude Code plugin. Point it at a feature, a folder, or a topic; it reads the code, picks the 2-5 beats worth a panel, has a mascot act them out in hand-drawn style, and writes a short storybook with the panels in sequence. Works with your ChatGPT subscription (via the Codex CLI) or with any image tool by hand.
 
 ![example](examples/hero.png)
 
 ## Install
 
-For now, run without a marketplace. Clone and install dependencies first, since `claude --plugin-dir` blocks the shell:
+```
+/plugin marketplace add ShahriarBijoy/show-me-how
+/plugin install show-me-how@show-me-how
+```
+
+The first run installs `sharp` into the plugin folder automatically. Requires Node >=20.9.
+
+From a clone instead (useful while hacking on the plugin):
 
 ```bash
 git clone https://github.com/ShahriarBijoy/show-me-how.git
-cd show-me-how
-npm install
-```
-
-Then load it as a local plugin:
-
-```bash
+cd show-me-how && npm install
 claude --plugin-dir .
 ```
-
-Once published: `/plugin marketplace add ShahriarBijoy/show-me-how`.
-
-Requires Node >=20.9.
 
 ## Commands
 
 | Command | Does | Example |
 |---|---|---|
 | `/show-me-how:init` | Sets up `design.md` (mascot, font, colors, tone, output folder) and draws one test image. | `/show-me-how:init` |
-| `/show-me-how:explain <topic>` | Explains a feature or concept in chat, with 1-3 illustrations. | `/show-me-how:explain label overlay` |
-| `/show-me-how:write-doc [path\|folder\|topic]` | Writes an illustrated doc under `docs/show-me-how/<topic>/` (default; set `docs:` in design.md). | `/show-me-how:write-doc scripts/` |
+| `/show-me-how:explain <topic>` | Explains a feature or concept as a 1-3 panel storybook, shown in chat and saved. | `/show-me-how:explain label overlay` |
+| `/show-me-how:write-doc [path\|folder\|topic]` | Writes a storybook doc as `docs/show-me-how/<topic>/<topic>.md` (set `docs:` in design.md to move it). | `/show-me-how:write-doc scripts/` |
 | `/show-me-how:pr-review [pr\|url]` | Draws "the picture of what this PR does" — never posts or commits. | `/show-me-how:pr-review 412` |
 
 ## Backends
@@ -60,10 +57,10 @@ If you have `openai/codex-plugin-cc` installed, `/codex:rescue` can run the same
 ## How it works
 
 1. Understand: read the topic's source files or commits, write a short brief.
-2. Anchors: pick the few ideas worth a picture, one fresh metaphor each.
-3. Shot list: print the planned illustrations before drawing.
-4. Draw: generate each shot with no text baked in.
-5. Label overlay + assemble: overlay labels in your brand font, then write the images (with editable `.svg` sidecars) into the doc.
+2. Beats: pick 2-5 panels that tell it in order — setup, action, twist, payoff.
+3. Panel list: print the planned panels and captions before drawing.
+4. Draw: generate every panel at once, in parallel, with no text baked in.
+5. Label + write: overlay labels in your brand font, then write one storybook — `docs/show-me-how/<topic>/<topic>.md` with `01.png`, `02.png`… inline. Working files live in `.show-me-how/` and are removed when the run completes.
 
 v1.1 roadmap: `gemini` and API-key backends, Google Font downloads, and in-image labels.
 
