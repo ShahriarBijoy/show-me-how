@@ -9,7 +9,7 @@
       "name": "show-me-how",
       "source": "./",
       "description": "Explain code, features and PRs with mascot-illustrated plain-language docs. Hand-drawn style, your brand, your font.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "author": { "name": "Shahriar Bijoy" },
       "homepage": "https://github.com/ShahriarBijoy/show-me-how",
       "repository": "https://github.com/ShahriarBijoy/show-me-how",
