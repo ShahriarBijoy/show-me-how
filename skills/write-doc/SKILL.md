@@ -23,7 +23,7 @@ Write BRIEF (<=200 words): what changed or what this is, why, how it works, what
 
 ## 3. Illustrate
 
-MAX_IMAGES = 3 if the source is a single short file or one small commit, else 6.
+MAX_IMAGES = 3 for a small source (a single short file, one small commit); 4-6 only for a large multi-file feature. Prefer fewer.
 
 Invoke the `illustrate` skill (`skills/illustrate/SKILL.md`) from its step 0, with this brief block:
 
@@ -32,9 +32,9 @@ MODE: write-doc
 TOPIC: <TOPIC>
 SOURCES: <the paths/commits from step 1>
 BRIEF: <the text from step 2>
-MAX_IMAGES: <3 or 6>
+MAX_IMAGES: <3, or 4-6>
 ```
 
 ## 4. Report
 
-After illustrate finishes, print the doc path (`DIR/README.md`) and a 3-line summary of what it covers. Do not commit anything, and do not tell the user to commit it for them — leave that to them.
+After illustrate finishes, print the doc path (`DIR/README.md`) and a 3-line summary of what it covers. Suggest that the user add `docs/show-me-how/**/raw/` to their `.gitignore` so prompts and unlabelled generations stay out of the repo — suggest only, never edit `.gitignore` for them. Do not commit anything, and do not tell the user to commit it for them — leave that to them.

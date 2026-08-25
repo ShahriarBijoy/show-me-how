@@ -86,8 +86,15 @@ const ENABLE_IMAGE_TOOL = ['--enable', 'image_generation'];
 const REASONING_EFFORTS = ['minimal', 'low', 'medium', 'high'];
 
 export function buildCodexArgs({ prompt, refs = [], out, cwd, codexModel = '', codexReasoning = 'low' }) {
-  const args = ['exec', '-C', cwd, '-s', 'workspace-write', '--skip-git-repo-check', ...ENABLE_IMAGE_TOOL];
-  for (const r of refs) args.push('-i', r);
+  // `-C` sets codex's working directory, and `-s workspace-write` grants write access to that whole
+  // tree. Handing it the repo root would let a drawing run modify any file in the user's repo, so
+  // the sandbox is scoped to the shot's own output folder -- the only place this run should write.
+  // Everything else therefore has to be absolute: once codex is chdir'd into raw/, a relative `out`
+  // or `-i` ref would resolve against the wrong directory.
+  const absOut = resolve(cwd, out);
+  const absRefs = refs.map((r) => resolve(cwd, r));
+  const args = ['exec', '-C', dirname(absOut), '-s', 'workspace-write', '--skip-git-repo-check', ...ENABLE_IMAGE_TOOL];
+  for (const r of absRefs) args.push('-i', r);
   // Drawing does not need deep reasoning; low effort is faster and cheaper. An empty model
   // means "whatever codex is configured to use", so only pass -m when one was chosen.
   if (codexModel) args.push('-m', codexModel);
@@ -107,9 +114,9 @@ export function buildCodexArgs({ prompt, refs = [], out, cwd, codexModel = '', c
   const instruction =
     `Use the $imagegen skill to generate exactly ONE image with its built-in image_gen tool. ` +
     `The image_gen tool takes no destination argument. It reports the path it wrote (under the codex ` +
-    `home, e.g. ~/.codex/generated_images/); copy that file to exactly this path: "${out}" ` +
+    `home, e.g. ~/.codex/generated_images/); copy that file to exactly this path: "${absOut}" ` +
     `(create parent folders if needed), then report that path. Landscape 16:9. ` +
-    (refs.length ? `The attached image(s) are style references for the mascot character -- reference role, not edit targets. ` : '') +
+    (absRefs.length ? `The attached image(s) are style references for the mascot character -- reference role, not edit targets. ` : '') +
     `Do not use the scripts/image_gen.py CLI fallback. Do not substitute SVG, HTML/CSS, canvas, ` +
     `Python/PIL or any other code-drawn placeholder art; if image_gen is unavailable, stop and say so. ` +
     `Do not write any other files. Do not ask questions. Image prompt follows.\n\n${prompt}`;
@@ -121,6 +128,11 @@ export async function generate({ backend, prompt, refs = [], out, cwd = process.
   out = resolve(cwd, out);
   mkdirSync(dirname(out), { recursive: true });
   if (backend === 'manual') {
+    // Resume path: the user took the prompt file to their own image tool and saved the result as
+    // `out`, then re-ran the same command. Picking the saved shot up here is what makes that loop
+    // work -- and the prompt file is deliberately left untouched, so a hand-edited prompt is not
+    // silently overwritten by the freshly rendered one on the pass that finally succeeds.
+    if (existsSync(out)) return { ok: true, backend, out, resumed: true };
     const promptFile = out + '.prompt.txt';
     writeFileSync(promptFile, `# Paste into ChatGPT / Gemini / any image tool. Save the result as:\n# ${out}\n\n${prompt}\n`);
     return { ok: false, backend, out, promptFile };

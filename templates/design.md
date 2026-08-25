@@ -12,7 +12,7 @@ never: cute, sparkly eyes, clothing, standing in the corner watching
 
 ## Font
 labels: Caveat
-  # Google Font name, a path to a .ttf/.otf, or "in-image" to let the model draw text (typos likely)
+  # A font family installed on this machine, or a path to a .ttf/.otf (downloading Google Fonts is v1.1)
 
 ## Colors
 flow: "#F28C28"    # arrows, paths, main movement

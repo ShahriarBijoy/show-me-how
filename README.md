@@ -1,7 +1,7 @@
 # show-me-how
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Node >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](package.json)
+[![Node >=20.9](https://img.shields.io/badge/node-%3E%3D20.9-brightgreen.svg)](package.json)
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-D97757.svg)](https://code.claude.com/docs/en/plugins)
 [![Tests](https://img.shields.io/badge/tests-node%3Atest-informational.svg)](test)
 [![Image backends](https://img.shields.io/badge/backends-codex%20%7C%20manual-lightgrey.svg)](skills/illustrate/references/backends.md)
@@ -17,7 +17,7 @@ A Claude Code plugin. Point it at a feature, a folder, or a topic; it reads the 
 For now, run without a marketplace. Clone and install dependencies first, since `claude --plugin-dir` blocks the shell:
 
 ```bash
-git clone https://github.com/<your-github>/show-me-how.git
+git clone https://github.com/ShahriarBijoy/show-me-how.git
 cd show-me-how
 npm install
 ```
@@ -28,9 +28,9 @@ Then load it as a local plugin:
 claude --plugin-dir .
 ```
 
-Once published: `/plugin marketplace add <your-github>/show-me-how`.
+Once published: `/plugin marketplace add ShahriarBijoy/show-me-how`.
 
-Requires Node >=18.
+Requires Node >=20.9.
 
 ## Commands
 
@@ -54,7 +54,7 @@ If you have `openai/codex-plugin-cc` installed, `/codex:rescue` can run the same
 `design.md` at your repo root controls the look: mascot, font, colors, tone, output folder. Run `/show-me-how:init` to create it.
 
 - Mascot: Flow (default) — small solid-black blob, deadpan — or bring your own: a text description plus 1-3 reference images.
-- Font for labels: Caveat (bundled, OFL), a local `.ttf`/`.otf` path, or `labels: in-image` to let the model draw text itself.
+- Font for labels: Caveat (bundled, OFL), or a local `.ttf`/`.otf` path.
 - Colors, tone, and the docs output folder are also editable fields.
 
 ## How it works
@@ -65,7 +65,7 @@ If you have `openai/codex-plugin-cc` installed, `/codex:rescue` can run the same
 4. Draw: generate each shot with no text baked in.
 5. Label overlay + assemble: overlay labels in your brand font, then write the images (with editable `.svg` sidecars) into the doc.
 
-v1.1 roadmap: a `pr-review` command, `gemini` and API-key backends, and Google Font downloads.
+v1.1 roadmap: `gemini` and API-key backends, Google Font downloads, and in-image labels.
 
 ## Credits
 

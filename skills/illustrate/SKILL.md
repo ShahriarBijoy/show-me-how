@@ -1,6 +1,6 @@
 ---
 name: illustrate
-description: Engine for show-me-how. Plans 1-6 mascot illustrations for a brief, generates them via an image backend, overlays labels in the brand font, and assembles a plain-language explainer. Invoked by /show-me-how:explain and /show-me-how:write-doc; also usable when the user asks to "illustrate", "draw how X works", or "make an explainer image".
+description: Engine for show-me-how. Plans 1-6 mascot illustrations for a brief, generates them via an image backend, overlays labels in the brand font, and assembles a plain-language explainer. Invoked by /show-me-how:explain, /show-me-how:write-doc and /show-me-how:pr-review; also usable when the user asks to "illustrate", "draw how X works", or "make an explainer image".
 ---
 
 # illustrate
@@ -22,6 +22,8 @@ Read once, before drawing: `references/style-dna.md`, `references/composition-pa
 `REPO` below is the absolute path of the git root (`git rev-parse --show-toplevel`). Run every command from there. Never stop the run because one shot failed — mark it pending and keep going.
 
 ## 0. Resolve brand and backend
+
+Before any script call below: if `${CLAUDE_PLUGIN_ROOT}/node_modules/sharp` is missing, run `npm install --silent` with cwd `${CLAUDE_PLUGIN_ROOT}` first.
 
 1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/design.mjs" "REPO"` -> JSON (`mascot`, `font`, `colors`, `tone`, `output.docs`, `output.backend`). If `REPO/design.md` does not exist, say once: "No design.md found; using Flow + Caveat defaults. Run /show-me-how:init to customize."
 2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" detect --cwd "REPO"` -> prints `backend: ...`. Echo that line to the user verbatim. If the command errors instead of printing `backend:`, show the error to the user; it means `design.md` pins a backend that is not installed. Ask them to install it or set `backend: auto`, then stop.
@@ -53,8 +55,8 @@ NN  <structure>   "<title>"
    node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" generate --prompt-file "DIR/raw/NN.prompt.txt" --out "DIR/raw/NN.png" --ref "<ref1>" --ref "<ref2>" --cwd "REPO"
    ```
    The command always exits 0. Read success from the JSON `ok` field, never from the exit code.
-4. `ok:false` with `promptFile` (manual backend) — tell the user: "Prompt saved to `<promptFile>`. Paste it into ChatGPT/Gemini, save the image as `DIR/raw/NN.png`, then run the same command again; the shot will be picked up and labelled." Mark shot NN **pending**, skip step 3.6 and step 4, go to the next shot.
-5. `ok:false` with `stderr` (codex failed) — show the last 5 lines of `stderr`, then fall back to manual for this shot: point the user at `DIR/raw/NN.prompt.txt` and the same save path, with the same "run the same command again" line. Mark NN **pending**, skip step 3.6 and step 4, go to the next shot.
+4. `ok:false` with `promptFile` (manual backend) — tell the user: "Prompt saved to `<promptFile>`. Paste it into ChatGPT/Gemini, save the image as `DIR/raw/NN.png`, then re-run the same slash command (e.g. `/show-me-how:explain <topic>`); the saved shot is picked up and labelled." Mark shot NN **pending**, skip step 3.6 and step 4, go to the next shot.
+5. `ok:false` with `stderr` (codex failed) — show the last 5 lines of `stderr`, then fall back to manual for this shot: point the user at `DIR/raw/NN.prompt.txt` and the same save path, with the same "re-run the same slash command" line. Mark NN **pending**, skip step 3.6 and step 4, go to the next shot.
 6. `ok:true` — view `DIR/raw/NN.png` with the Read tool and check it against every "Must pass" item in `references/qa-checklist.md`. If any of them fails, regenerate exactly once:
    - Append the matching line from "Iteration moves" in `references/qa-checklist.md` to the end of the existing `DIR/raw/NN.prompt.txt`. For a decorative mascot, append the retry prompt from `references/prompt-template.md` instead. For text in the image, append a stronger no-text instruction — never the mascot-central retry text. If no move matches the failed item, append the failed "Must pass" line itself as an instruction (e.g. "Make the mascot present and performing the action").
    - The retry text is only ever **appended** to the original filled prompt; never send it on its own.
@@ -68,7 +70,7 @@ NN  <structure>   "<title>"
    { "labels": [{ "text": "", "x": 0.0, "y": 0.0, "kind": "black" }],
      "arrows": [{ "from": [0.0, 0.0], "to": [0.0, 0.0], "kind": "flow" }] }
    ```
-   `x`/`y` are 0-1 fractions of width/height, placed in empty space next to the object they describe. `kind`: `black` (names), `flow` (movement), `warn` (the gotcha or result), `note` (side info). Max 5 labels, 2 arrows. Omit `colors`/`font` — the script fills them from `design.md`.
+   `x`/`y` are 0-1 fractions of width/height, placed in empty space next to the object they describe. The canvas is about 1672x941, and a label is drawn centred on its `x`/`y`, so keep every centre within x 0.12-0.88 and y 0.08-0.94 or the text runs off the edge. `kind`: `black` (names), `flow` (movement), `warn` (the gotcha or result), `note` (side info). Max 5 labels, 2 arrows. Omit `colors`/`font` — the script fills them from `design.md`.
 2. Overlay:
    ```
    node "${CLAUDE_PLUGIN_ROOT}/scripts/label.mjs" --in "DIR/raw/NN.png" --labels "DIR/raw/NN.labels.json" --out "DIR/NN-<shot-slug>.png" --design-cwd "REPO"
@@ -88,7 +90,7 @@ The prompt file to name for a pending shot is the `promptFile` from the generate
 
 For a pending shot, write `![<title> — pending](DIR/raw/NN.png)` and name its prompt file.
 
-**`MODE=write-doc`** — write `DIR/README.md` (image links are relative to `DIR`, so no folder prefix):
+**`MODE=write-doc`** — write `DIR/README.md`. Use each shot's title verbatim as its `##` heading. Image links are relative to `DIR`, so no folder prefix:
 
 ```
 # <Title>

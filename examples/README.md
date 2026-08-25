@@ -13,3 +13,5 @@ editable `.svg` label layers.
 **`write-doc-scripts/`** — `/show-me-how:write-doc scripts/`, an illustrated
 tour of the plugin's four CLIs. `write-doc` writes the doc as well, so
 [`write-doc-scripts/README.md`](write-doc-scripts/README.md) is the real output.
+
+`/show-me-how:pr-review` ships in v1 but has no example run here yet.

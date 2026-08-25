@@ -24,4 +24,4 @@ carry, pull, push, plug, sort, weigh, cut, stitch, guard a gate, hold a ladder, 
 Remove Flow from the picture. If the idea still reads, Flow is decoration: rewrite so Flow performs the action.
 
 ## Reference images
-`assets/flow/front.png`, `assets/flow/working.png`, `assets/flow/stuck.png` — pass these as `--ref` to the backend.
+`${CLAUDE_PLUGIN_ROOT}/assets/flow/front.png`, `${CLAUDE_PLUGIN_ROOT}/assets/flow/working.png`, `${CLAUDE_PLUGIN_ROOT}/assets/flow/stuck.png` — pass these as `--ref` to the backend.

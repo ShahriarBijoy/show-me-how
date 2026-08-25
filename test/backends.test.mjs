@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { detectBackend, generate, buildCodexArgs, defaultWhich } from '../scripts/lib/backends.mjs';
 
@@ -26,12 +26,16 @@ test('pinned backend wins even if missing (error surfaces)', () => {
 
 test('buildCodexArgs includes refs and out path in prompt', () => {
   const args = buildCodexArgs({ prompt: 'draw x', refs: ['a.png', 'b.png'], out: 'raw/01.png', cwd: '/w' });
-  assert.deepEqual(args.slice(0, 9), ['exec', '-C', '/w', '-s', 'workspace-write', '--skip-git-repo-check', '--enable', 'image_generation', '-i']);
-  assert.ok(args.includes('a.png') && args.includes('b.png'));
+  // -C is the shot's own output folder, not the repo root: `-s workspace-write` makes -C the
+  // writable sandbox, so scoping it to raw/ keeps a drawing run out of the rest of the repo.
+  assert.deepEqual(args.slice(0, 9), ['exec', '-C', dirname(resolve('/w', 'raw/01.png')), '-s', 'workspace-write', '--skip-git-repo-check', '--enable', 'image_generation', '-i']);
+  // ...which in turn means every path handed to codex must be absolute, since it no longer runs
+  // from the repo root a relative ref would be resolved against.
+  assert.ok(args.includes(resolve('/w', 'a.png')) && args.includes(resolve('/w', 'b.png')));
   // `-i, --image <FILE>...` is greedy: if a ref were the last flag before the positional prompt,
   // clap would swallow the instruction as another filename. Something non-greedy must sit between.
   assert.ok(args.indexOf('-c') > args.lastIndexOf('-i'), 'a -c flag must terminate the -i list');
-  assert.match(args.at(-1), /raw\/01\.png/);
+  assert.ok(args.at(-1).includes(resolve('/w', 'raw/01.png')));
   assert.match(args.at(-1), /draw x/);
 });
 
@@ -44,7 +48,7 @@ test('buildCodexArgs names the $imagegen skill, forbids code-drawn art, and asks
   assert.match(instruction, /\$imagegen/);
   // image_gen has no destination argument; it writes under $CODEX_HOME and the agent copies it out
   assert.match(instruction, /generated_images/);
-  assert.match(instruction, /copy that file to exactly this path: "raw\/o\.png"/);
+  assert.ok(instruction.includes(`copy that file to exactly this path: "${resolve('/w', 'raw/o.png')}"`));
   assert.match(instruction, /Do not substitute SVG/);
   assert.match(instruction, /Do not use the scripts\/image_gen\.py CLI fallback/);
 });
@@ -262,4 +266,33 @@ test('backend.mjs CLI generate writes a prompt file and exits 0 when pinned to m
   assert.equal(result.backend, 'manual');
   assert.ok(existsSync(out + '.prompt.txt'));
   assert.match(readFileSync(out + '.prompt.txt', 'utf8'), /deadpan blob doing taxes/);
+});
+
+// Manual resume: the user pastes the prompt into their own image tool, saves the result as `out`,
+// then re-runs the same slash command. The second pass must recognise the saved shot instead of
+// overwriting the prompt file and reporting failure again.
+test('manual generate resumes when the image already exists, without rewriting the prompt file', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-resume-'));
+  const out = join(dir, '01.png');
+  writeFileSync(out, 'png the user saved by hand');
+  const promptFile = out + '.prompt.txt';
+  writeFileSync(promptFile, 'ORIGINAL PROMPT');
+  const r = await generate({ backend: 'manual', prompt: 'a different prompt', out, cwd: dir });
+  assert.equal(r.ok, true);
+  assert.equal(r.resumed, true);
+  assert.equal(r.backend, 'manual');
+  assert.equal(r.out, out);
+  // the prompt file must be left exactly as it was -- not re-written from the new prompt
+  assert.equal(readFileSync(promptFile, 'utf8'), 'ORIGINAL PROMPT');
+});
+
+// codex is spawned with `-s workspace-write`, which grants write access to the -C directory tree.
+// Pointing -C at the repo root would let a drawing run touch any file in the user's repo, so the
+// sandbox is scoped to the shot's own output folder instead. `cwd` still spawns from the repo.
+test('buildCodexArgs sandboxes codex to the output folder, not the repo root', () => {
+  const out = resolve('/w/docs/show-me-how/topic/raw/01.png');
+  const args = buildCodexArgs({ prompt: 'p', out, cwd: resolve('/w') });
+  assert.equal(args[1], '-C');
+  assert.equal(args[2], dirname(out));
+  assert.notEqual(args[2], resolve('/w'));
 });

@@ -17,7 +17,7 @@ If `REPO/design.md` already exists, say so and ask one question: overwrite, or e
 Use AskUserQuestion when available; otherwise ask in plain text and wait for each answer before asking the next.
 
 1. Mascot: (a) Use Flow, the default (b) Describe your own (c) I have 1-3 reference images. For (b) ask for 1-2 sentences describing shape, eyes, limbs, expression. For (c) ask for the paths, then still ask for the one-line description.
-2. Font for labels: (a) Caveat, handwritten default (b) a local `.ttf`/`.otf` path (c) let the image model draw text ("in-image").
+2. Font for labels: (a) Caveat, handwritten default (b) a local `.ttf`/`.otf` path.
 3. Colors: (a) defaults orange/red/blue (b) three hex values for flow / warn / note.
 4. Tone, 2-3 words (default "deadpan, absurd, clean").
 5. Docs folder (default `docs/show-me-how/`).
