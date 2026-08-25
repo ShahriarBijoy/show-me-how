@@ -42,12 +42,14 @@ test('labelImage flattens a transparent generation onto white', async () => {
   assert.equal(info.channels, 3);
 });
 
-test('labelImage writes png of same size plus svg', async () => {
+test('labelImage writes only the png, no svg sidecar', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'smh-'));
   const input = await whitePng(join(dir, 'raw.png'));
-  const out = join(dir, '01-test.png');
+  const out = join(dir, '01.png');
   const r = await labelImage({ input, spec, out });
-  assert.ok(existsSync(r.out) && existsSync(r.svg));
+  assert.deepEqual(Object.keys(r), ['out']);
+  assert.ok(existsSync(r.out));
+  assert.equal(existsSync(join(dir, '01.svg')), false, 'no .svg sidecar may be written');
   const meta = await sharp(r.out).metadata();
   assert.equal(meta.width, 640); assert.equal(meta.height, 360);
   const { data, info } = await sharp(r.out).raw().toBuffer({ resolveWithObject: true });

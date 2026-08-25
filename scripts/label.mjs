@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import sharp from 'sharp';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { loadDesign } from './lib/design.mjs';
@@ -46,10 +46,9 @@ function arrowParts(spec, width, height) {
   return parts;
 }
 
-// Full overlay markup: arrows + text labels. This is what gets written to the
-// .svg sidecar and is what the unit tests assert against as a string. It is
-// NOT what actually gets rasterized into the output PNG for the <text>
-// portion -- see the comment above labelImage() for why.
+// Full overlay markup: arrows + text labels. Kept as an exported pure function
+// so the unit tests can assert on the label layer as a string. It is NOT what
+// gets rasterized for the <text> portion -- see the comment above labelImage().
 export function renderSvgLayer(spec, width, height) {
   const family = fontFamily(spec.font);
   const base = Math.round(height * 0.06);
@@ -89,10 +88,9 @@ export function renderSvgLayer(spec, width, height) {
 // Windows.
 //
 // So: renderSvgLayer() above still emits the full <text>-bearing SVG markup
-// (used for the .svg sidecar file and asserted on as a string by tests), but
-// labelImage() below rasterizes arrows via that SVG through librsvg (fine --
-// no fonts involved) and rasterizes each label's text separately via the
-// `fontfile` text-create path, then composites both onto the base image.
+// (asserted on as a string by tests), but labelImage() below rasterizes arrows
+// via a text-free SVG through librsvg and each label via the `fontfile`
+// text-create path, then composites both onto the base image.
 async function renderLabelPng(text, kind, size, spec, fontPath) {
   const family = fontFamily(spec.font);
   const markup = `<span foreground="${esc(color(kind, spec.colors))}">${esc(text)}</span>`;
@@ -109,9 +107,6 @@ async function renderLabelPng(text, kind, size, spec, fontPath) {
 export async function labelImage({ input, spec, out, fontPath = DEFAULT_FONT }) {
   const img = sharp(input);
   const { width, height } = await img.metadata();
-  const svg = renderSvgLayer(spec, width, height);
-  const svgPath = out.replace(/\.png$/i, '') + '.svg';
-  writeFileSync(svgPath, svg);
 
   const arrowsSvg = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
@@ -142,7 +137,7 @@ export async function labelImage({ input, spec, out, fontPath = DEFAULT_FONT }) 
   // strip it, and paints the transparent background white rather than leaving it undefined-black.
   const composited = await img.composite(overlays).png().toBuffer();
   await sharp(composited).flatten({ background: '#ffffff' }).png().toFile(out);
-  return { out, svg: svgPath };
+  return { out };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
