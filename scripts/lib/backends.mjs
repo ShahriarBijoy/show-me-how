@@ -81,24 +81,33 @@ export function detectBackend({ pinned = 'auto', which = defaultWhich } = {}) {
 // task-10-report.md) turns on the real `image_gen` tool plus `view_image`.
 const ENABLE_IMAGE_TOOL = ['--enable', 'image_generation'];
 
+// codex accepts exactly these four. A typo in design.md would otherwise reach codex as an opaque
+// config error mid-run, after the user has already waited on a generation, so reject it up front.
+const REASONING_EFFORTS = ['minimal', 'low', 'medium', 'high'];
+
 export function buildCodexArgs({ prompt, refs = [], out, cwd, codexModel = '', codexReasoning = 'low' }) {
   const args = ['exec', '-C', cwd, '-s', 'workspace-write', '--skip-git-repo-check', ...ENABLE_IMAGE_TOOL];
   for (const r of refs) args.push('-i', r);
   // Drawing does not need deep reasoning; low effort is faster and cheaper. An empty model
   // means "whatever codex is configured to use", so only pass -m when one was chosen.
   if (codexModel) args.push('-m', codexModel);
-  args.push('-c', `model_reasoning_effort=${codexReasoning}`);
+  const effort = codexReasoning || 'low';
+  if (!REASONING_EFFORTS.includes(effort)) {
+    throw new Error(`design.md: codex_reasoning "${effort}" is not a codex reasoning effort. Use ${REASONING_EFFORTS.join(' | ')}`);
+  }
+  // Also terminates the greedy `-i <FILE>...` list above, so the instruction below stays positional.
+  args.push('-c', `model_reasoning_effort=${effort}`);
   // Three things this instruction has to get right, all learned the hard way (task-10-report.md):
   //   1. Name the `$imagegen` skill explicitly. "Create an image" on its own reads as an ordinary
   //      coding task and codex answers it by *drawing with code* (SVG/PIL), which is not what we want.
-  //   2. `image_gen` takes no destination argument -- it saves under $CODEX_HOME/generated_images/.
-  //      The agent has to copy the chosen output to `out` afterwards, so we ask for that in words.
+  //   2. `image_gen` takes no destination argument -- it writes under the codex home and reports
+  //      the path back. The agent has to copy that file to `out`, so we ask for it in words.
   //   3. Forbid the scripts/image_gen.py CLI fallback: it needs an OPENAI_API_KEY, which a
   //      subscription user does not have, so falling back to it just burns a run.
   const instruction =
     `Use the $imagegen skill to generate exactly ONE image with its built-in image_gen tool. ` +
-    `The image_gen tool takes no destination argument: it saves under $CODEX_HOME/generated_images/. ` +
-    `After generating, copy the selected output to exactly this path: "${out}" ` +
+    `The image_gen tool takes no destination argument. It reports the path it wrote (under the codex ` +
+    `home, e.g. ~/.codex/generated_images/); copy that file to exactly this path: "${out}" ` +
     `(create parent folders if needed), then report that path. Landscape 16:9. ` +
     (refs.length ? `The attached image(s) are style references for the mascot character -- reference role, not edit targets. ` : '') +
     `Do not use the scripts/image_gen.py CLI fallback. Do not substitute SVG, HTML/CSS, canvas, ` +

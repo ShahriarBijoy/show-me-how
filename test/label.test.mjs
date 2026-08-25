@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { renderSvgLayer, labelImage } from '../scripts/label.mjs';
-import { whitePng } from './fixtures/make-fixture.mjs';
+import { whitePng, transparentPng } from './fixtures/make-fixture.mjs';
 
 const spec = {
   font: 'Caveat',
@@ -26,6 +26,20 @@ test('svg layer contains labels, colors, font and an arrow path', () => {
   assert.match(svg, /<path[^>]+d="M/);
   assert.match(svg, /x="128(\.\d+)?"/); // 0.2 * 640
   assert.match(svg, /dominant-baseline="central"/);
+});
+
+test('labelImage flattens a transparent generation onto white', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-alpha-'));
+  const input = await transparentPng(join(dir, 'raw.png'));
+  assert.equal((await sharp(input).metadata()).hasAlpha, true, 'fixture must start out transparent');
+  const out = join(dir, '01-test.png');
+  const r = await labelImage({ input, spec, out });
+  const meta = await sharp(r.out).metadata();
+  assert.equal(meta.hasAlpha, false);
+  const { data, info } = await sharp(r.out).raw().toBuffer({ resolveWithObject: true });
+  // top-left corner: no label or arrow reaches it, so it must be the flattened white background
+  assert.deepEqual([data[0], data[1], data[2]], [255, 255, 255], `corner was ${[data[0], data[1], data[2]]}`);
+  assert.equal(info.channels, 3);
 });
 
 test('labelImage writes png of same size plus svg', async () => {

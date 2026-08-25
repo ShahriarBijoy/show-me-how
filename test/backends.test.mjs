@@ -28,6 +28,9 @@ test('buildCodexArgs includes refs and out path in prompt', () => {
   const args = buildCodexArgs({ prompt: 'draw x', refs: ['a.png', 'b.png'], out: 'raw/01.png', cwd: '/w' });
   assert.deepEqual(args.slice(0, 9), ['exec', '-C', '/w', '-s', 'workspace-write', '--skip-git-repo-check', '--enable', 'image_generation', '-i']);
   assert.ok(args.includes('a.png') && args.includes('b.png'));
+  // `-i, --image <FILE>...` is greedy: if a ref were the last flag before the positional prompt,
+  // clap would swallow the instruction as another filename. Something non-greedy must sit between.
+  assert.ok(args.indexOf('-c') > args.lastIndexOf('-i'), 'a -c flag must terminate the -i list');
   assert.match(args.at(-1), /raw\/01\.png/);
   assert.match(args.at(-1), /draw x/);
 });
@@ -41,7 +44,7 @@ test('buildCodexArgs names the $imagegen skill, forbids code-drawn art, and asks
   assert.match(instruction, /\$imagegen/);
   // image_gen has no destination argument; it writes under $CODEX_HOME and the agent copies it out
   assert.match(instruction, /generated_images/);
-  assert.match(instruction, /copy the selected output to exactly this path: "raw\/o\.png"/);
+  assert.match(instruction, /copy that file to exactly this path: "raw\/o\.png"/);
   assert.match(instruction, /Do not substitute SVG/);
   assert.match(instruction, /Do not use the scripts\/image_gen\.py CLI fallback/);
 });
@@ -54,6 +57,25 @@ test('buildCodexArgs always sets the reasoning effort and omits -m unless a mode
   const withModel = buildCodexArgs({ prompt: 'p', out: 'o.png', cwd: '/w', codexModel: 'gpt-5.1-codex-max', codexReasoning: 'high' });
   assert.ok(hasPair(withModel, '-m', 'gpt-5.1-codex-max'));
   assert.ok(hasPair(withModel, '-c', 'model_reasoning_effort=high'));
+});
+
+test('buildCodexArgs falls back to low for an empty reasoning effort', () => {
+  for (const empty of ['', undefined, null]) {
+    assert.ok(hasPair(buildCodexArgs({ prompt: 'p', out: 'o.png', cwd: '/w', codexReasoning: empty }), '-c', 'model_reasoning_effort=low'));
+  }
+});
+
+test('buildCodexArgs rejects a reasoning effort codex would not understand', () => {
+  assert.throws(
+    () => buildCodexArgs({ prompt: 'p', out: 'o.png', cwd: '/w', codexReasoning: 'extreme' }),
+    /codex_reasoning.*"extreme".*minimal | low | medium | high/s,
+  );
+});
+
+test('buildCodexArgs accepts every effort codex supports', () => {
+  for (const e of ['minimal', 'low', 'medium', 'high']) {
+    assert.ok(hasPair(buildCodexArgs({ prompt: 'p', out: 'o.png', cwd: '/w', codexReasoning: e }), '-c', `model_reasoning_effort=${e}`));
+  }
 });
 
 test('buildCodexArgs defaults the reasoning effort to low', () => {
@@ -167,7 +189,7 @@ test('defaultRun preserves a single trailing backslash, e.g. a Windows dir path 
 // Regression test for a silent hang: codex exec reads stdin when stdin is a pipe, and the default
 // child stdio leaves that pipe open forever. The child below only exits once its stdin reaches EOF,
 // so if defaultRun ever goes back to piping stdin this test hangs instead of failing fast.
-test('defaultRun gives the child a closed stdin so a CLI that reads stdin cannot hang', async () => {
+test('defaultRun gives the child a closed stdin so a CLI that reads stdin cannot hang', { timeout: 10_000 }, async () => {
   const { defaultRun } = await import('../scripts/lib/backends.mjs');
   const dir = mkdtempSync(join(tmpdir(), 'smh-stdin-'));
   const script = join(dir, 'drain-stdin.mjs');

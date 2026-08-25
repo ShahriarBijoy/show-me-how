@@ -5,7 +5,7 @@ Fill every {slot}. One prompt per shot. Send via `scripts/backend.mjs generate`.
 ```text
 One standalone 16:9 landscape illustration, 2048x1152.
 
-Visual DNA: pure white background. Minimal black hand-drawn line art, thin slightly wobbly pen lines. Lots of empty white space; the subject fills 40-60% of the canvas. Clean, absurd product-sketch feeling. No gradients, no shadows, no paper texture, no background scenery, no vector/corporate style, no infographic or slide look, no cute mascot poster, no children's illustration, no UI screenshots.
+Visual DNA: opaque pure white background, RGB 255,255,255 -- NOT transparent, no alpha channel, the background must be painted white. Props are unfilled thin black outlines: no colour fill, no wood grain, no cross-hatching, no stippling. Minimal black hand-drawn line art, thin slightly wobbly pen lines. Lots of empty white space; the subject fills 40-60% of the canvas. Clean, absurd product-sketch feeling. No gradients, no shadows, no paper texture, no background scenery, no vector/corporate style, no infographic or slide look, no cute mascot poster, no children's illustration, no UI screenshots.
 
 ABSOLUTELY NO TEXT, LETTERS, NUMBERS OR LABELS anywhere in the image. Leave clear empty space beside each key object where a label could be written later.
 

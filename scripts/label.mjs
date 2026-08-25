@@ -131,7 +131,17 @@ export async function labelImage({ input, spec, out, fontPath = DEFAULT_FONT }) 
     overlays.push({ input: buf, left, top });
   }
 
-  await img.composite(overlays).png().toFile(out);
+  // image_gen returns a transparent-background PNG often enough to matter (one in four on the
+  // first Flow pass), and a transparent "white" background renders black wherever the doc is dark.
+  // Flattening here fixes it once for every backend instead of trusting each prompt to ask nicely.
+  //
+  // This has to be a SECOND pass. sharp orders its own pipeline, so a flatten() chained onto the
+  // same pipeline as composite() cannot win: the label/arrow overlays are RGBA, and compositing
+  // them re-adds an alpha channel no matter which side of composite() the flatten() call sits on
+  // (verified both orders -- each still yields channels=4). Flattening the finished buffer does
+  // strip it, and paints the transparent background white rather than leaving it undefined-black.
+  const composited = await img.composite(overlays).png().toBuffer();
+  await sharp(composited).flatten({ background: '#ffffff' }).png().toFile(out);
   return { out, svg: svgPath };
 }
 
