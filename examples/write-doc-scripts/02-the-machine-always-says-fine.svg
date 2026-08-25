@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1672" height="941" viewBox="0 0 1672 941">
-<path d="M877.8 72.5 Q972.5 68.5 1066.7 58.3" fill="none" stroke="#111111" stroke-width="6" stroke-linecap="round"/>
-<path d="M1046.6 71.4 L1066.7 58.3 L1044.9 48.4" fill="none" stroke="#111111" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M643.7 597.5 Q692.2 628.8 744.0 654.0" fill="none" stroke="#D93025" stroke-width="6" stroke-linecap="round"/>
-<path d="M720.0 653.7 L744.0 654.0 L731.3 633.6" fill="none" stroke="#D93025" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="668.8" y="65.9" font-family="Caveat, cursive" font-size="56" fill="#111111" text-anchor="middle" dominant-baseline="central">always exits 0</text>
-<text x="401.3" y="564.6" font-family="Caveat, cursive" font-size="56" fill="#D93025" text-anchor="middle" dominant-baseline="central">the tray is empty</text>
-<text x="434.7" y="809.3" font-family="Caveat, cursive" font-size="56" fill="#F28C28" text-anchor="middle" dominant-baseline="central">read the ok field</text>
-</svg>
