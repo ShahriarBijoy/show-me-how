@@ -12,8 +12,8 @@ Date: 2026-08-25. Supersedes the output-layout and `explain` sections of `2026-0
 
 ## Goals
 
-1. Every command produces the same artifact: one storybook — a short `README.md` wrapping 2-5 labelled panels in sequence.
-2. Final output folder contains only `README.md` and the panel PNGs.
+1. Every command produces the same artifact: one storybook — a short `<slug>.md` wrapping 2-5 labelled panels in sequence.
+2. Final output folder contains only `<slug>.md` and the panel PNGs.
 3. All panels generate in parallel.
 4. Repo is installable as a marketplace.
 
@@ -23,15 +23,15 @@ Out of scope: composite comic-page image, speech bubbles, gemini backend, migrat
 
 ```
 <design.output.docs>/<slug>/
-  README.md
+  <slug>.md
   01.png
   02.png
   ...
 ```
 
-Panel files are `NN.png` (no title slug — the title lives in the README). Nothing else may remain in the folder after a fully successful run.
+The doc is `<slug>.md`, named after the topic (e.g. `docs/show-me-how/label-overlay/label-overlay.md`), so it stays identifiable when opened alone or in an editor tab. Panel files are `NN.png` (no title slug — the title lives in the doc). Nothing else may remain in the folder after a fully successful run.
 
-## 2. README shape (the storybook)
+## 2. Doc shape (the storybook)
 
 ```
 # <Title>
@@ -60,7 +60,7 @@ Rules:
 - No `##` headings between panels. The sequence of images is the structure.
 - Caption ≤40 words. Total prose (hook + captions + remember) ≤120 words for 3 panels, ≤180 for 5.
 - Pending panel: `![<title> — pending](<scratch>/NN.png)` plus one line naming the prompt file, same as today.
-- `explain` prints the finished README verbatim in chat **and** saves it. `write-doc` and `pr-review` print the path plus their existing summaries. The `MODE` field in the brief block collapses to one behaviour; it is kept only to decide whether to echo the README in chat (`explain`) or not.
+- `explain` prints the finished doc verbatim in chat **and** saves it. `write-doc` and `pr-review` print the path plus their existing summaries. The `MODE` field in the brief block collapses to one behaviour; it is kept only to decide whether to echo the doc in chat (`explain`) or not.
 
 ## 3. Beats instead of anchors
 
@@ -94,7 +94,7 @@ Illustrate step 3 splits into two phases:
 
 The manual backend produces N prompt files immediately; all N panels are pending in one message rather than one at a time.
 
-Ordering guarantee: the README is written only after every panel is either labelled or pending.
+Ordering guarantee: the doc is written only after every panel is either labelled or pending.
 
 ## 6. Marketplace
 
@@ -127,7 +127,7 @@ with the `--plugin-dir` route kept as the "from a clone" alternative. The existi
 - `skills/explain/SKILL.md`, `skills/write-doc/SKILL.md`, `skills/pr-review/SKILL.md` — report steps updated; `.gitignore` suggestion updated.
 - `scripts/label.mjs` — drop `.svg` write.
 - `test/label.test.mjs` — assert no `.svg` is produced.
-- `test/smoke.test.mjs` — assert final folder contains only `README.md` + `NN.png` (fixture-driven, no backend).
+- `test/smoke.test.mjs` — assert final folder contains only `<slug>.md` + `NN.png` (fixture-driven, no backend).
 - `.claude-plugin/marketplace.json` — new.
 - `README.md` — install, commands, how-it-works, file layout.
 - `examples/` — regenerate `explain-label-overlay` and `write-doc-scripts` in the new shape; delete their `.svg` files.
@@ -140,5 +140,5 @@ Unchanged contracts: `backend.mjs generate` always exits 0; one failed panel nev
 ## 9. Testing
 
 - Unit: `label.mjs` writes only the PNG. `slug`/`design`/`backends` tests unchanged.
-- Smoke: run illustrate's file-shaping logic against fixture PNGs (already in `test/fixtures/`) and assert the output folder listing and that the README matches the §2 shape (no `##` before the Sources block, image links in order).
-- Manual: `/show-me-how:explain label overlay` with codex; confirm timing drops versus sequential and the folder contains only `README.md` + `0N.png`.
+- Smoke: run illustrate's file-shaping logic against fixture PNGs (already in `test/fixtures/`) and assert the output folder listing and that the doc matches the §2 shape (no `##` before the Sources block, image links in order).
+- Manual: `/show-me-how:explain label overlay` with codex; confirm timing drops versus sequential and the folder contains only `<slug>.md` + `0N.png`.
