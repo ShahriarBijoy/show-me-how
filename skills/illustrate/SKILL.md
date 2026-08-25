@@ -1,6 +1,6 @@
 ---
 name: illustrate
-description: Engine for show-me-how. Plans 1-6 mascot panels for a brief as a short storybook, generates them in parallel via an image backend, overlays labels in the brand font, and writes one doc with the panels in sequence. Invoked by /show-me-how:explain, /show-me-how:write-doc and /show-me-how:pr-review; also usable when the user asks to "illustrate", "draw how X works", or "make an explainer image".
+description: Engine for show-me-how. Plans 1-5 mascot panels for a brief as a short storybook, generates them in parallel via an image backend, overlays labels in the brand font, and writes one doc with the panels in sequence. Invoked by /show-me-how:explain, /show-me-how:write-doc and /show-me-how:pr-review; also usable when the user asks to "illustrate", "draw how X works", or "make an explainer image".
 ---
 
 # illustrate
