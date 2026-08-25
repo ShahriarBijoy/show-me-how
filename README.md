@@ -10,7 +10,6 @@ Explain code, features and PRs with mascot-illustrated plain-language docs. Hand
 
 A Claude Code plugin. Point it at a feature, a folder, or a topic; it reads the code, picks the 1–6 ideas worth a picture, has a mascot act them out in hand-drawn style, and writes the explainer with the images inline. Works with your ChatGPT subscription (via the Codex CLI) or with any image tool by hand.
 
-<!-- hero image added after first real run -->
 ![example](examples/hero.png)
 
 ## Install

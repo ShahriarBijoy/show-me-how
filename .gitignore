@@ -2,3 +2,5 @@ node_modules/
 .show-me-how-tmp/
 .superpowers/
 reference/
+examples/**/raw/
+docs/show-me-how/
