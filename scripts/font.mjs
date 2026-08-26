@@ -8,10 +8,10 @@
 // `fontfile` option (CoreText), so the font has to be installed once in ~/Library/Fonts --
 // that is what `install` does (copy, then re-check). Always exits 0; read the JSON `ok` field.
 import { fileURLToPath } from 'node:url';
-import { basename, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { loadDesign } from './lib/design.mjs';
 import { userFontDir, installFont } from './lib/font.mjs';
-import { fontFileWorks, fontFallbackHint, resolveFontPath } from './label.mjs';
+import { fontFileWorks, fontFallbackHint, labelFamily, resolveFontPath } from './label.mjs';
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [, , cmd, ...rest] = process.argv;
@@ -22,9 +22,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     process.exit(2);
   }
   const cwd = a['design-cwd'] || process.cwd();
-  const fontPath = a.font ? resolve(cwd, a.font) : resolveFontPath(loadDesign(cwd), cwd);
-  const family = basename(fontPath).replace(/\.(ttf|otf)$/i, '');
-  const r = { ok: false, font: fontPath, platform: process.platform, installDir: userFontDir() };
+  const design = loadDesign(cwd);
+  const fontPath = a.font ? resolve(cwd, a.font) : resolveFontPath(design, cwd);
+  const family = labelFamily(a.font ? fontPath : design.font.labels, fontPath);
+  const r = { ok: false, font: fontPath, family, platform: process.platform, installDir: userFontDir() };
   try {
     if (cmd === 'install') Object.assign(r, installFont(fontPath, r.installDir));
     r.ok = await fontFileWorks(fontPath, family);

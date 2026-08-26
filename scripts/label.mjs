@@ -25,6 +25,46 @@ function fontFamily(font) {
   return font && font !== 'in-image' ? font.replace(/\.(ttf|otf)$/i, '').split(/[\\/]/).pop() : 'Caveat';
 }
 
+// Family name from a TrueType/OpenType file's `name` table (typographic family 16, else family 1).
+// Pango matches on this name, not the file name: `Caveat-Regular.ttf` must be asked for as
+// "Caveat" or fontconfig (Linux) / CoreText (macOS) falls back to the default font. Returns null
+// for anything it cannot parse (collections, damaged files) so callers can fall back to the name.
+const familyCache = new Map();
+export function fontFamilyFromFile(fontPath) {
+  if (familyCache.has(fontPath)) return familyCache.get(fontPath);
+  let family = null;
+  try {
+    const b = readFileSync(fontPath);
+    const numTables = b.readUInt16BE(4);
+    let name = null;
+    for (let i = 0; i < numTables; i++) {
+      const rec = 12 + i * 16;
+      if (b.toString('latin1', rec, rec + 4) === 'name') { name = { off: b.readUInt32BE(rec + 8), len: b.readUInt32BE(rec + 12) }; break; }
+    }
+    if (name) {
+      const count = b.readUInt16BE(name.off + 2), strings = name.off + b.readUInt16BE(name.off + 4);
+      const found = {};
+      for (let i = 0; i < count; i++) {
+        const r = name.off + 6 + i * 12;
+        const platform = b.readUInt16BE(r), nameId = b.readUInt16BE(r + 6), len = b.readUInt16BE(r + 8), off = strings + b.readUInt16BE(r + 10);
+        if ((nameId !== 1 && nameId !== 16) || found[nameId]) continue;
+        const raw = b.subarray(off, off + len);
+        found[nameId] = platform === 1 ? raw.toString('latin1') : Buffer.from(raw).swap16().toString('utf16le');
+      }
+      family = found[16] || found[1] || null;
+    }
+  } catch { family = null; }
+  familyCache.set(fontPath, family);
+  return family;
+}
+
+// The family Pango should be asked for: what the font file says it is, when `font` refers to a
+// file (or is the bundled default); otherwise the family name as written in design.md.
+export function labelFamily(font, fontPath) {
+  const isFile = !font || font === 'in-image' || /\.(ttf|otf)$/i.test(font);
+  return (isFile && fontFamilyFromFile(fontPath)) || fontFamily(font);
+}
+
 // deterministic "hand-drawn" wobble so snapshots are stable
 function wobblePath(x1, y1, x2, y2, seed) {
   const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
@@ -191,8 +231,10 @@ function encode(pipeline, out, quality) {
 }
 
 export async function labelImage({ input, spec, out, fontPath = DEFAULT_FONT, quality = 80, probe = fontFileWorks }) {
-  // before the first label render -- see the order note inside fontFileWorks()
-  const fontOk = await probe(fontPath, fontFamily(spec.font));
+  // ask Pango for the family the file really carries, then probe it before the first label
+  // render -- see the order note inside fontFileWorks()
+  spec = { ...spec, font: labelFamily(spec.font, fontPath) };
+  const fontOk = await probe(fontPath, spec.font);
   const img = sharp(input);
   const { width, height } = await img.metadata();
 

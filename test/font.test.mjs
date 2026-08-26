@@ -6,8 +6,24 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { userFontDir, installFont } from '../scripts/lib/font.mjs';
-import { DEFAULT_FONT, fontFileWorks, fontFallbackHint, resolveFontPath } from '../scripts/label.mjs';
+import { DEFAULT_FONT, fontFileWorks, fontFallbackHint, fontFamilyFromFile, labelFamily, resolveFontPath } from '../scripts/label.mjs';
 import { DEFAULTS } from '../scripts/lib/design.mjs';
+
+test('fontFamilyFromFile reads the family Pango matches on, not the file name', () => {
+  assert.equal(fontFamilyFromFile(DEFAULT_FONT), 'Caveat');
+  const dir = mkdtempSync(join(tmpdir(), 'smh-font-'));
+  writeFileSync(join(dir, 'Broken.ttf'), 'not a font');
+  assert.equal(fontFamilyFromFile(join(dir, 'Broken.ttf')), null);
+  assert.equal(fontFamilyFromFile(join(dir, 'missing.ttf')), null);
+});
+
+test('labelFamily: file-backed fonts use the name inside the file, installed families their own name', () => {
+  assert.equal(labelFamily('Caveat', DEFAULT_FONT), 'Caveat');
+  assert.equal(labelFamily('brand/Caveat-Regular.ttf', DEFAULT_FONT), 'Caveat', 'file name differs from family');
+  assert.equal(labelFamily(undefined, DEFAULT_FONT), 'Caveat');
+  assert.equal(labelFamily('Comic Sans MS', DEFAULT_FONT), 'Comic Sans MS', 'an installed family is asked for as written');
+  assert.equal(labelFamily('brand/Broken.ttf', '/nope/Broken.ttf'), 'Broken', 'unreadable file falls back to the file name');
+});
 
 const fallbackWidth = { width: 638, height: 70 };
 const measureIgnoringFile = async () => fallbackWidth; // macOS: fontfile ignored, both hit Helvetica
