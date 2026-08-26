@@ -105,7 +105,20 @@ A silhouette that reads at small size (a blob, a box, a simple robot) works bett
 2. Beats: turn it into a storyboard — setup, action, twist, payoff — one panel per beat, as many as the topic needs.
 3. Panel list: print the planned panels and captions before drawing.
 4. Draw: generate every panel at once, in parallel, with no text baked in.
-5. Label + write: overlay labels and a caption strip in your brand font, then write one storybook — `docs/show-me-how/<topic>/<topic>.md` with `01.png`, `02.png`… inline, plus `<topic>.html` with the panels embedded: one self-contained file you can send to anyone, no markdown viewer needed. Working files live in `.show-me-how/` and are removed when the run completes.
+5. Label + write: overlay labels and a caption strip in your brand font, then write one storybook — `docs/show-me-how/<topic>/<topic>.md` with `01.webp`, `02.webp`… inline, plus `<topic>.html` with the panels embedded: one self-contained file you can send to anyone, no markdown viewer needed. Working files live in `.show-me-how/` and are removed when the run completes.
+
+Panels are saved as WebP at full generated size (about 45 KB each instead of ~700 KB as PNG, so a five-panel HTML is ~250 KB rather than 4-5 MB). Set `image_format: png` and `image_quality:` in the `## Output` section of `design.md` if you need something else.
+
+## Troubleshooting
+
+**macOS: labels come out in Helvetica, not Caveat.** sharp's macOS build resolves fonts through CoreText and ignores the bundled font file, so the font has to be installed for your user once. `/show-me-how:init` offers to do this; by hand:
+
+```sh
+node "<plugin dir>/scripts/font.mjs" install     # copies the label font into ~/Library/Fonts and re-checks
+# or simply: cp "<plugin dir>/assets/fonts/Caveat-Regular.ttf" ~/Library/Fonts/
+```
+
+`label.mjs` detects the fallback and prints the same hint, so a run never silently ships the wrong font. `node "<plugin dir>/scripts/font.mjs" check` tells you where you stand. The `Fontconfig error: Cannot load default config file` line sharp prints on macOS is harmless.
 
 v1.1 roadmap: `gemini` and API-key backends, Google Font downloads, and in-image labels.
 

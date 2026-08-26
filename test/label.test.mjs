@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { renderSvgLayer, labelImage } from '../scripts/label.mjs';
+import { readFileSync } from 'node:fs';
 import { whitePng, transparentPng } from './fixtures/make-fixture.mjs';
 
 const spec = {
@@ -76,4 +77,34 @@ test('labelImage keeps the original size when there is no caption', async () => 
   const r = await labelImage({ input, spec, out: join(dir, '01.png') });
   const meta = await sharp(r.out).metadata();
   assert.equal(meta.height, 360);
+});
+
+test('labelImage writes webp when out ends in .webp and png when it ends in .png', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-webp-'));
+  const input = await whitePng(join(dir, 'raw.png'));
+  const webp = await labelImage({ input, spec: { ...spec, caption: 'Small files, same picture.' }, out: join(dir, '01.webp') });
+  const png = await labelImage({ input, spec: { ...spec, caption: 'Small files, same picture.' }, out: join(dir, '01.png') });
+  const meta = await sharp(webp.out).metadata();
+  assert.equal(meta.format, 'webp');
+  assert.equal(meta.width, 640);
+  assert.equal(meta.hasAlpha, false);
+  assert.equal((await sharp(png.out).metadata()).format, 'png');
+  assert.ok(readFileSync(webp.out).length < 60_000, 'a labelled 640x360 panel stays small as webp');
+  // still a white background after lossy encoding
+  const { data } = await sharp(webp.out).raw().toBuffer({ resolveWithObject: true });
+  assert.ok(data[0] >= 250 && data[1] >= 250 && data[2] >= 250, `corner was ${[data[0], data[1], data[2]]}`);
+});
+
+test('labelImage reports a hint when the font file is ignored (macOS, issue #1)', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-hint-'));
+  const input = await whitePng(join(dir, 'raw.png'));
+  const orig = console.error; const logged = []; console.error = (m) => logged.push(m);
+  try {
+    const r = await labelImage({ input, spec, out: join(dir, '01.webp'), probe: async () => false });
+    assert.equal(r.fontFallback, true);
+    assert.match(r.hint, /Caveat-Regular\.ttf/);
+    assert.equal(logged.length, 1, 'hint printed once on stderr');
+    const ok = await labelImage({ input, spec, out: join(dir, '02.webp'), probe: async () => true });
+    assert.deepEqual(Object.keys(ok), ['out']);
+  } finally { console.error = orig; }
 });

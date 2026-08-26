@@ -2,11 +2,18 @@
 import sharp from 'sharp';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { loadDesign } from './lib/design.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_FONT = join(HERE, '..', 'assets', 'fonts', 'Caveat-Regular.ttf');
+
+// design.md `labels:` is either a family name (rendered from the bundled Caveat file unless the
+// family is installed) or a .ttf/.otf path relative to the repo root.
+export function resolveFontPath(design, cwd = process.cwd()) {
+  const f = design.font.labels;
+  return /\.(ttf|otf)$/i.test(f) ? resolve(cwd, f) : DEFAULT_FONT;
+}
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 
@@ -16,6 +23,46 @@ function color(kind, colors) {
 
 function fontFamily(font) {
   return font && font !== 'in-image' ? font.replace(/\.(ttf|otf)$/i, '').split(/[\\/]/).pop() : 'Caveat';
+}
+
+// Family name from a TrueType/OpenType file's `name` table (typographic family 16, else family 1).
+// Pango matches on this name, not the file name: `Caveat-Regular.ttf` must be asked for as
+// "Caveat" or fontconfig (Linux) / CoreText (macOS) falls back to the default font. Returns null
+// for anything it cannot parse (collections, damaged files) so callers can fall back to the name.
+const familyCache = new Map();
+export function fontFamilyFromFile(fontPath) {
+  if (familyCache.has(fontPath)) return familyCache.get(fontPath);
+  let family = null;
+  try {
+    const b = readFileSync(fontPath);
+    const numTables = b.readUInt16BE(4);
+    let name = null;
+    for (let i = 0; i < numTables; i++) {
+      const rec = 12 + i * 16;
+      if (b.toString('latin1', rec, rec + 4) === 'name') { name = { off: b.readUInt32BE(rec + 8), len: b.readUInt32BE(rec + 12) }; break; }
+    }
+    if (name) {
+      const count = b.readUInt16BE(name.off + 2), strings = name.off + b.readUInt16BE(name.off + 4);
+      const found = {};
+      for (let i = 0; i < count; i++) {
+        const r = name.off + 6 + i * 12;
+        const platform = b.readUInt16BE(r), nameId = b.readUInt16BE(r + 6), len = b.readUInt16BE(r + 8), off = strings + b.readUInt16BE(r + 10);
+        if ((nameId !== 1 && nameId !== 16) || found[nameId]) continue;
+        const raw = b.subarray(off, off + len);
+        found[nameId] = platform === 1 ? raw.toString('latin1') : Buffer.from(raw).swap16().toString('utf16le');
+      }
+      family = found[16] || found[1] || null;
+    }
+  } catch { family = null; }
+  familyCache.set(fontPath, family);
+  return family;
+}
+
+// The family Pango should be asked for: what the font file says it is, when `font` refers to a
+// file (or is the bundled default); otherwise the family name as written in design.md.
+export function labelFamily(font, fontPath) {
+  const isFile = !font || font === 'in-image' || /\.(ttf|otf)$/i.test(font);
+  return (isFile && fontFamilyFromFile(fontPath)) || fontFamily(font);
 }
 
 // deterministic "hand-drawn" wobble so snapshots are stable
@@ -65,7 +112,7 @@ export function renderSvgLayer(spec, width, height) {
 // --- Font rendering notes (read before touching this file) ---------------
 //
 // sharp's SVG rasterizer (librsvg, via libvips) resolves <text font-family="…">
-// through fontconfig+Pango. On this Windows build (sharp 0.35.3, libvips
+// through fontconfig+Pango. On the Windows build (sharp 0.35.3, libvips
 // 8.18.3, bundled fontconfig 2.18.1) that lookup could NOT be steered at all:
 // setting FONTCONFIG_FILE (absolute path, with and without <cachedir>) or
 // FONTCONFIG_PATH before the first `import('sharp')`, even pointing at a
@@ -76,21 +123,73 @@ export function renderSvgLayer(spec, width, height) {
 // SVG <text> layer is NOT a viable path to a handwritten label -- regardless
 // of env var wiring.
 //
-// What DOES work: libvips' `text` create-operation (`sharp({ text: {...} })`)
-// accepts a `fontfile` option that loads a font file directly via
-// FcConfigAppFontAddFile into a private, in-process font config -- entirely
+// What DOES work on Windows and Linux: libvips' `text` create-operation
+// (`sharp({ text: {...} })`) accepts a `fontfile` option that loads a font file
+// directly via FcConfigAppFontAddFile into a private, in-process font config --
 // bypassing the system/env fontconfig lookup that failed above. Combined with
 // a `font: "<Family> <size>"` Pango description and Pango markup
 // (`<span foreground="#RRGGBB">…</span>`) for color, this reliably rendered
 // Caveat glyphs, verified visually (handwritten strokes, not a fallback
-// sans/serif) via a scratchpad PNG. This is portable (no dependency on the
-// host's fontconfig setup at all) so we use it for every platform, not just
-// Windows.
+// sans/serif) via a scratchpad PNG.
+//
+// macOS is the exception (issue #1): sharp's darwin build resolves fonts through
+// CoreText, not fontconfig, so `fontfile` is silently ignored and every label
+// comes out in Helvetica -- unless the same font is installed in ~/Library/Fonts,
+// in which case the family name resolves normally. There is no in-process way
+// around that, so fontFileWorks() below detects the fallback by rendering a probe
+// string with the font file and comparing it against a deliberately unknown
+// family (both hit the same system fallback when `fontfile` is ignored), and
+// labelImage() reports a one-line hint instead of shipping Helvetica silently.
+// scripts/font.mjs wraps that probe and does the ~/Library/Fonts install.
 //
 // So: renderSvgLayer() above still emits the full <text>-bearing SVG markup
 // (asserted on as a string by tests), but labelImage() below rasterizes arrows
 // via a text-free SVG through librsvg and each label via the `fontfile`
 // text-create path, then composites both onto the base image.
+
+const PROBE_TEXT = 'Show me how? fjqg';
+const PROBE_UNKNOWN_FAMILY = 'ShowMeHowNoSuchFont';
+
+async function defaultMeasure({ family, fontPath }) {
+  const text = { text: PROBE_TEXT, font: `${family} 48`, dpi: 72, rgba: true };
+  if (fontPath) text.fontfile = fontPath;
+  const { info } = await sharp({ text }).png().toBuffer({ resolveWithObject: true });
+  return { width: info.width, height: info.height };
+}
+
+const probeCache = new Map();
+
+// true when rendering with `fontfile` actually uses that file (or an installed font of the same
+// family); false when Pango ignored it and fell back to the system default. `measure` is
+// injectable for tests.
+export async function fontFileWorks(fontPath, family, measure = defaultMeasure) {
+  const key = `${fontPath}\u0000${family}`;
+  if (measure === defaultMeasure && probeCache.has(key)) return probeCache.get(key);
+  // Order matters: the fallback render must come FIRST and the two must not overlap. On the
+  // Windows build the first text operation in a process fixes libvips' font map, and if that
+  // first operation carried `fontfile`, the loaded font becomes the only font in the private
+  // config, so an unknown family resolves to it too and both renders come out identical (a false
+  // negative). Rendering the unknown family before any font file is loaded pins the real system
+  // fallback. That is also why labelImage() probes before drawing its first label, once per process.
+  const fallback = await measure({ family: PROBE_UNKNOWN_FAMILY });
+  const withFile = await measure({ family, fontPath });
+  const ok = withFile.width !== fallback.width || withFile.height !== fallback.height;
+  if (measure === defaultMeasure) probeCache.set(key, ok);
+  return ok;
+}
+
+// One line the skill can show the user when the probe fails.
+export function fontFallbackHint(fontPath, platform = process.platform) {
+  const name = basename(fontPath);
+  const installCmd = `node "${join(HERE, 'font.mjs')}" install`;
+  if (platform === 'darwin') {
+    return `Labels were drawn in the system font, not ${name}: sharp on macOS ignores font files (CoreText). ` +
+      `Fix once with: cp "${fontPath}" ~/Library/Fonts/   (or: ${installCmd})`;
+  }
+  return `Labels were drawn in the system font, not ${name}: this sharp build ignored the font file. ` +
+    `Install ${name} for your user (${installCmd}) and rerun.`;
+}
+
 async function renderLabelPng(text, kind, size, spec, fontPath) {
   const family = fontFamily(spec.font);
   const markup = `<span foreground="${esc(color(kind, spec.colors))}">${esc(text)}</span>`;
@@ -122,7 +221,20 @@ async function renderCaptionPng(text, width, height, spec, fontPath) {
   return { buf, width: meta.width, height: meta.height };
 }
 
-export async function labelImage({ input, spec, out, fontPath = DEFAULT_FONT }) {
+// Picks the encoder from the extension of `out`. `quality` is design.md image_quality (1-100).
+function encode(pipeline, out, quality) {
+  const ext = extname(out).toLowerCase();
+  if (ext === '.webp') return pipeline.webp({ quality });
+  if (ext === '.jpg' || ext === '.jpeg') return pipeline.jpeg({ quality });
+  // palette PNG: a few-colour line-art panel quantizes to about half the size with no visible loss
+  return pipeline.png({ palette: true, quality, compressionLevel: 9 });
+}
+
+export async function labelImage({ input, spec, out, fontPath = DEFAULT_FONT, quality = 80, probe = fontFileWorks }) {
+  // ask Pango for the family the file really carries, then probe it before the first label
+  // render -- see the order note inside fontFileWorks()
+  spec = { ...spec, font: labelFamily(spec.font, fontPath) };
+  const fontOk = await probe(fontPath, spec.font);
   const img = sharp(input);
   const { width, height } = await img.metadata();
 
@@ -169,8 +281,14 @@ export async function labelImage({ input, spec, out, fontPath = DEFAULT_FONT }) 
     flat = sharp(await flat.png().toBuffer()).flatten({ background: '#ffffff' });
   }
 
-  await flat.png().toFile(out);
-  return { out };
+  await encode(flat, out, quality).toFile(out);
+  const result = { out };
+  if (!fontOk) {
+    result.fontFallback = true;
+    result.hint = fontFallbackHint(fontPath);
+    console.error(result.hint);
+  }
+  return result;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -180,7 +298,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const spec = JSON.parse(readFileSync(a.labels, 'utf8'));
   spec.font ??= design.font.labels; spec.colors ??= design.colors;
   if (a.caption) spec.caption = a.caption;
-  const fontPath = a.font || (/\.(ttf|otf)$/i.test(design.font.labels) ? resolve(design.font.labels) : DEFAULT_FONT);
-  const r = await labelImage({ input: a.in, spec, out: a.out, fontPath });
+  const fontPath = a.font || resolveFontPath(design, a['design-cwd'] || process.cwd());
+  const r = await labelImage({ input: a.in, spec, out: a.out, fontPath, quality: design.output.imageQuality });
   console.log(JSON.stringify(r));
 }
