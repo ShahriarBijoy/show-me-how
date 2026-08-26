@@ -28,7 +28,7 @@ Read once, before drawing: `references/style-dna.md`, `references/composition-pa
 
 Before any script call below: if `${CLAUDE_PLUGIN_ROOT}/node_modules/sharp` is missing, run `npm install --silent` with cwd `${CLAUDE_PLUGIN_ROOT}` first.
 
-1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/design.mjs" "REPO"` -> JSON (`mascot`, `font`, `colors`, `tone`, `output.docs`, `output.backend`). If `REPO/design.md` does not exist, say once: "No design.md found; using Flow + Caveat defaults. Run /show-me-how:init to customize."
+1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/design.mjs" "REPO"` -> JSON (`mascot`, `font`, `colors`, `tone`, `output.docs`, `output.backend`, `output.imageFormat`). `EXT` = `output.imageFormat` (`webp` by default; `png` if the user set it). If `REPO/design.md` does not exist, say once: "No design.md found; using Flow + Caveat defaults. Run /show-me-how:init to customize."
 2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" detect --cwd "REPO"` -> prints `backend: ...`. Echo that line to the user verbatim; it already carries the install / login hint when codex is missing, outdated or signed out, so do not add advice of your own. If the command errors instead of printing `backend:`, show the error; it means `design.md` pins `codex` but codex is not usable (not installed, too old, or not logged in). Ask them to fix that or set `backend: auto`, then stop.
 3. `node "${CLAUDE_PLUGIN_ROOT}/scripts/slug.mjs" "<TOPIC>"` -> `SLUG`.
    - `DIR` = `<design.output.docs>` joined with `SLUG` with exactly one `/` between them (`output.docs` may end in `/`) (e.g. `docs/show-me-how/label-overlay`), or `OUTDIR` if the brief block has one.
@@ -86,10 +86,11 @@ Handle each result as its shell exits; do not wait for all of them before starti
    `x`/`y` are 0-1 fractions of width/height, placed in empty space next to the object they describe. The canvas is about 1672x941 and a label is centred on its `x`/`y`, so keep every centre within x 0.12-0.88 and y 0.08-0.94. `kind`: `black` (names), `flow` (movement), `warn` (the gotcha or result), `note` (side info). Max 5 labels, 2 arrows. Omit `colors`/`font` — the script fills them from `design.md`.
 2. Overlay:
    ```
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/label.mjs" --in "SCRATCH/NN.png" --labels "SCRATCH/NN.labels.json" --caption "<caption>" --out "DIR/NN.png" --design-cwd "REPO"
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/label.mjs" --in "SCRATCH/NN.png" --labels "SCRATCH/NN.labels.json" --caption "<caption>" --out "DIR/NN.EXT" --design-cwd "REPO"
    ```
-   `--caption` is the panel's one-line caption from step 2; the script adds a white strip below the picture with that line in the brand font. Pass it for every panel.
-3. View `DIR/NN.png` once. If a label sits on line art or runs off the edge, nudge its `x`/`y` and rerun 4.2. At most one nudge per panel.
+   `--caption` is the panel's one-line caption from step 2; the script adds a white strip below the picture with that line in the brand font. Pass it for every panel. The output format follows the `--out` extension (`EXT` from step 0.1); the finished panel is written in that format at the generated size (a WebP panel is ~45 KB against ~700 KB as PNG).
+   The result is a JSON line. If it carries a `hint` field, the labels were drawn in the system font instead of the brand font (this happens on macOS until the font is installed for the user — see `scripts/font.mjs`). Show that `hint` line to the user **once** per run, keep going, and do not try to fix it yourself.
+3. View `DIR/NN.EXT` once. If a label sits on line art or runs off the edge, nudge its `x`/`y` and rerun 4.2. At most one nudge per panel.
 
 ## 5. Write the storybook
 
@@ -100,13 +101,13 @@ Only after every panel is either labelled or pending. Write `DOC` exactly in thi
 
 <hook: 1-2 sentences — what this is and why the reader cares>
 
-![<panel 1 title>](01.png)
+![<panel 1 title>](01.EXT)
 
 ### <caption 1>
 
 <text 1>
 
-![<panel 2 title>](02.png)
+![<panel 2 title>](02.EXT)
 
 ### <caption 2>
 
@@ -120,7 +121,7 @@ Only after every panel is either labelled or pending. Write `DOC` exactly in thi
 </details>
 ```
 
-Word budget: caption <=12 words, text <=40 words per panel; hook + Remember <=60 words together. Every panel gets a caption and a text — an image alone is not a beat. Plain language, no jargon dumps. Image links are relative to `DIR`, so no folder prefix.
+Word budget: caption <=12 words, text <=40 words per panel; hook + Remember <=60 words together. Every panel gets a caption and a text — an image alone is not a beat. Plain language, no jargon dumps. Image links are relative to `DIR`, so no folder prefix, and use the real extension (`01.webp` by default).
 
 For a pending panel, write `![<title> — pending](<REL>/.show-me-how/SLUG/NN.png)` where `<REL>` is one `..` per path segment of `DIR` relative to `REPO` (default `docs/show-me-how/<slug>` → `../../..`), followed by one line: `_Pending: prompt at <prompt file>._`
 
@@ -128,6 +129,6 @@ For a pending panel, write `![<title> — pending](<REL>/.show-me-how/SLUG/NN.pn
 
 0. Export a shareable copy: `node "${CLAUDE_PLUGIN_ROOT}/scripts/export.mjs" --doc "DOC"` writes `DIR/SLUG.html` with every panel inlined, so the storybook can be sent as one file and opened in any browser. Run it after every write of `DOC`, including re-runs.
 1. If **no** panel is pending: delete `SCRATCH` (only `REPO/.show-me-how/SLUG`, never `.show-me-how` itself). If deleting fails, say so in one line and continue. If any panel is pending, keep `SCRATCH` and say it is kept for the re-run.
-2. `DIR` must now contain only `SLUG.md`, `SLUG.html` and `NN.png` files. List it. Delete only leftovers this plugin itself produces — `NN-*.png`, `NN-*.svg`, `README.md`, and a `raw/` folder from a v0.1 run. Anything else (other files, other folders) is the user's: leave it and tell them it is there.
+2. `DIR` must now contain only `SLUG.md`, `SLUG.html` and `NN.EXT` files. List it. Delete only leftovers this plugin itself produces — `NN-*.png`, `NN-*.svg`, `README.md`, and a `raw/` folder from a v0.1 run. Anything else (other files, other folders) is the user's: leave it and tell them it is there.
 3. `MODE=explain`: print the full contents of `DOC` in chat. `MODE=doc`: do not.
 4. Print exactly: how many panels were produced, which backend was used, the path to `DOC` and to `SLUG.html` ("send this one to share"), and which panel numbers are pending with each one's prompt file — or "none pending". Then suggest, without editing anything: "Add `.show-me-how/` to your `.gitignore` to keep prompts and unlabelled generations out of the repo." Do not commit anything.

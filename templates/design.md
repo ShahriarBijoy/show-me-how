@@ -27,3 +27,5 @@ docs: docs/show-me-how/
 backend: auto      # auto | codex | manual
 codex_model:       # codex model for image generation; empty = codex's own default
 codex_reasoning: low   # codex reasoning effort: minimal | low | medium | high
+image_format: webp     # webp | png -- format of the finished panels (webp is ~16x smaller)
+image_quality: 80      # 1-100, lossy quality for webp; palette quality for png

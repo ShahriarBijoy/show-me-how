@@ -40,6 +40,9 @@ Copy `${CLAUDE_PLUGIN_ROOT}/templates/design.md` to `REPO/design.md` and edit in
      - not logged in -> `codex login` is interactive and opens a browser, so you cannot run it. Tell the user to run it in their terminal (in Claude Code: `! codex login`), wait for them to say it is done, then re-check.
      If detect still does not say `backend: codex` after one round, say so, leave `backend: auto` in `design.md` (codex is picked up whenever it becomes ready) and continue with manual for the test image.
    - (b): set `backend: manual` in the `## Output` section of `REPO/design.md` so later runs stop repeating the codex hint. They can change it back to `auto` any time.
+4. Label font: `node "${CLAUDE_PLUGIN_ROOT}/scripts/font.mjs" check --design-cwd "REPO"` -> one JSON line. `ok:true` -> nothing to do. `ok:false` means sharp cannot use the font file on this machine (macOS: it resolves fonts through CoreText and ignores font files, so every label would come out in Helvetica). Then:
+   - If `installDir` is non-null, ask one question: "The label font (`<font>`) has to be installed for your user on this machine, or labels will render in the system font. Copy it into `<installDir>` now? (a) Yes (b) No, I'll do it myself." On (a) run `node "${CLAUDE_PLUGIN_ROOT}/scripts/font.mjs" install --design-cwd "REPO"` and show its `ok` result; if still `ok:false`, show the `hint` line. On (b) show the `hint` line and continue.
+   - If `installDir` is null, show the `hint` line and continue.
 
 ## 4. Test image
 

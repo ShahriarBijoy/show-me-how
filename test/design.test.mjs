@@ -40,6 +40,20 @@ test('an empty codex_model keeps the codex default', () => {
   assert.equal(d.output.codexModel, '');
 });
 
+test('image_format and image_quality parse from the Output section', () => {
+  assert.equal(DEFAULTS.output.imageFormat, 'webp');
+  assert.equal(DEFAULTS.output.imageQuality, 80);
+  const d = parseDesign(['## Output', 'image_format: PNG', 'image_quality: 90', ''].join('\n'));
+  assert.equal(d.output.imageFormat, 'png');
+  assert.equal(d.output.imageQuality, 90);
+});
+
+test('invalid image_format / image_quality throw clear errors', () => {
+  assert.throws(() => parseDesign('## Output\nimage_format: gif\n'), /image_format.*webp \| png/);
+  assert.throws(() => parseDesign('## Output\nimage_quality: 150\n'), /image_quality.*1 to 100/);
+  assert.throws(() => parseDesign('## Output\nimage_quality: high\n'), /image_quality/);
+});
+
 test('invalid color throws a clear error', () => {
   assert.throws(() => parseDesign('## Colors\nflow: red\n'), /flow.*hex/i);
 });
