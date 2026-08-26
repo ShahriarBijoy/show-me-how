@@ -1,9 +1,15 @@
 {
   "name": "show-me-how",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20.9.0" },
-  "scripts": { "test": "node --test" },
-  "dependencies": { "sharp": "^0.35.3" }
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "sharp": "^0.35.3"
+  }
 }
