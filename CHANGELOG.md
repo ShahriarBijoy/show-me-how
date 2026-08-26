@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/ShahriarBijoy/show-me-how/compare/v0.4.0...v0.4.1) (2026-08-26)
+
+
+### Bug Fixes
+
+* **label:** detect macOS font fallback + font install helper; save panels as WebP ([#4](https://github.com/ShahriarBijoy/show-me-how/issues/4)) ([96f1d60](https://github.com/ShahriarBijoy/show-me-how/commit/96f1d601039713364148b3559d68fa250646eeb1))
+
 ## [0.4.0](https://github.com/ShahriarBijoy/show-me-how/compare/v0.3.0...v0.4.0) (2026-08-26)
 
 
