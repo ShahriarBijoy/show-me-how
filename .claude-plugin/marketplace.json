@@ -1,6 +1,8 @@
 {
   "name": "show-me-how",
-  "owner": { "name": "Shahriar Bijoy" },
+  "owner": {
+    "name": "Shahriar Bijoy"
+  },
   "metadata": {
     "description": "Explain code, features and PRs with mascot-illustrated plain-language docs."
   },
@@ -9,12 +11,20 @@
       "name": "show-me-how",
       "source": "./",
       "description": "Explain code, features and PRs with mascot-illustrated plain-language docs. Hand-drawn style, your brand, your font.",
-      "version": "0.3.0",
-      "author": { "name": "Shahriar Bijoy" },
+      "version": "0.4.0",
+      "author": {
+        "name": "Shahriar Bijoy"
+      },
       "homepage": "https://github.com/ShahriarBijoy/show-me-how",
       "repository": "https://github.com/ShahriarBijoy/show-me-how",
       "license": "MIT",
-      "keywords": ["illustration", "documentation", "mascot", "explainer", "codex"]
+      "keywords": [
+        "illustration",
+        "documentation",
+        "mascot",
+        "explainer",
+        "codex"
+      ]
     }
   ]
 }
