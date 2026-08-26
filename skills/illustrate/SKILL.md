@@ -124,9 +124,10 @@ Word budget: caption <=12 words, text <=40 words per panel; hook + Remember <=60
 
 For a pending panel, write `![<title> — pending](<REL>/.show-me-how/SLUG/NN.png)` where `<REL>` is one `..` per path segment of `DIR` relative to `REPO` (default `docs/show-me-how/<slug>` → `../../..`), followed by one line: `_Pending: prompt at <prompt file>._`
 
-## 6. Clean up and finish
+## 6. Export, clean up, finish
 
+0. Export a shareable copy: `node "${CLAUDE_PLUGIN_ROOT}/scripts/export.mjs" --doc "DOC"` writes `DIR/SLUG.html` with every panel inlined, so the storybook can be sent as one file and opened in any browser. Run it after every write of `DOC`, including re-runs.
 1. If **no** panel is pending: delete `SCRATCH` (only `REPO/.show-me-how/SLUG`, never `.show-me-how` itself). If deleting fails, say so in one line and continue. If any panel is pending, keep `SCRATCH` and say it is kept for the re-run.
-2. `DIR` must now contain only `SLUG.md` and `NN.png` files. List it. Delete only leftovers this plugin itself produces — `NN-*.png`, `NN-*.svg`, `README.md`, and a `raw/` folder from a v0.1 run. Anything else (other files, other folders) is the user's: leave it and tell them it is there.
+2. `DIR` must now contain only `SLUG.md`, `SLUG.html` and `NN.png` files. List it. Delete only leftovers this plugin itself produces — `NN-*.png`, `NN-*.svg`, `README.md`, and a `raw/` folder from a v0.1 run. Anything else (other files, other folders) is the user's: leave it and tell them it is there.
 3. `MODE=explain`: print the full contents of `DOC` in chat. `MODE=doc`: do not.
-4. Print exactly: how many panels were produced, which backend was used, the path to `DOC`, and which panel numbers are pending with each one's prompt file — or "none pending". Then suggest, without editing anything: "Add `.show-me-how/` to your `.gitignore` to keep prompts and unlabelled generations out of the repo." Do not commit anything.
+4. Print exactly: how many panels were produced, which backend was used, the path to `DOC` and to `SLUG.html` ("send this one to share"), and which panel numbers are pending with each one's prompt file — or "none pending". Then suggest, without editing anything: "Add `.show-me-how/` to your `.gitignore` to keep prompts and unlabelled generations out of the repo." Do not commit anything.

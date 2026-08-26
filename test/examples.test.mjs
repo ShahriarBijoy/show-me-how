@@ -16,7 +16,7 @@ for (const slug of folders) {
   test(`examples/${slug} is a storybook: <slug>.md + NN.png only`, () => {
     const files = readdirSync(join(EXAMPLES, slug)).sort();
     const pngs = files.filter((f) => /^\d{2}\.png$/.test(f));
-    assert.deepEqual(files, [...pngs, `${slug}.md`].sort(), `unexpected files in ${slug}: ${files}`);
+    assert.deepEqual(files, [...pngs, `${slug}.html`, `${slug}.md`].sort(), `unexpected files in ${slug}: ${files}`);
     assert.ok(pngs.length >= 1);
     pngs.forEach((p, i) => assert.equal(p, `${String(i + 1).padStart(2, '0')}.png`));
 
@@ -29,5 +29,9 @@ for (const slug of folders) {
     assert.deepEqual(links, pngs.map((p) => p.slice(0, 2)), 'images linked in order, relative, all present');
     assert.match(md, /^\*\*Remember:\*\* .+/m);
     assert.match(md, /<details><summary>Sources<\/summary>/);
+
+    const html = readFileSync(join(EXAMPLES, slug, `${slug}.html`), 'utf8');
+    assert.equal((html.match(/data:image\/png;base64,/g) || []).length, pngs.length, 'every panel inlined in the html');
+    assert.equal(html.includes('.png"'), false, 'html has no relative image links');
   });
 }

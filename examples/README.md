@@ -9,7 +9,7 @@ copied from the first example.
 **`explain-label-overlay/`** — `/show-me-how:explain label overlay`, on how
 `scripts/label.mjs` puts words onto a finished picture. `explain` shows the
 storybook in chat and saves it too: [`explain-label-overlay.md`](explain-label-overlay/explain-label-overlay.md)
-with its four panels `01.png`-`04.png`, each carrying its caption strip.
+with its four panels `01.png`-`04.png`, each carrying its caption strip, and `explain-label-overlay.html`, the same storybook as one shareable file.
 
 **`write-doc-scripts/`** — `/show-me-how:write-doc scripts/`, a storybook tour
 of the plugin's four CLIs in five panels: [`write-doc-scripts.md`](write-doc-scripts/write-doc-scripts.md).

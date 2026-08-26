@@ -84,7 +84,7 @@ A silhouette that reads at small size (a blob, a box, a simple robot) works bett
 2. Beats: turn it into a storyboard — setup, action, twist, payoff — one panel per beat, as many as the topic needs.
 3. Panel list: print the planned panels and captions before drawing.
 4. Draw: generate every panel at once, in parallel, with no text baked in.
-5. Label + write: overlay labels and a caption strip in your brand font, then write one storybook — `docs/show-me-how/<topic>/<topic>.md` with `01.png`, `02.png`… inline. Working files live in `.show-me-how/` and are removed when the run completes.
+5. Label + write: overlay labels and a caption strip in your brand font, then write one storybook — `docs/show-me-how/<topic>/<topic>.md` with `01.png`, `02.png`… inline, plus `<topic>.html` with the panels embedded: one self-contained file you can send to anyone, no markdown viewer needed. Working files live in `.show-me-how/` and are removed when the run completes.
 
 v1.1 roadmap: `gemini` and API-key backends, Google Font downloads, and in-image labels.
 
