@@ -104,6 +104,24 @@ async function renderLabelPng(text, kind, size, spec, fontPath) {
   }).png().toBuffer();
 }
 
+// Caption text is wrapped by Pango to ~80% of the picture width and centred.
+async function renderCaptionPng(text, width, height, spec, fontPath) {
+  const family = fontFamily(spec.font);
+  const size = Math.round(height * 0.055);
+  const buf = await sharp({
+    text: {
+      text: `<span foreground="#111111">${esc(text)}</span>`,
+      font: `${family} ${size}`,
+      fontfile: fontPath,
+      width: Math.round(width * 0.8),
+      align: 'center',
+      rgba: true,
+    },
+  }).png().toBuffer();
+  const meta = await sharp(buf).metadata();
+  return { buf, width: meta.width, height: meta.height };
+}
+
 export async function labelImage({ input, spec, out, fontPath = DEFAULT_FONT }) {
   const img = sharp(input);
   const { width, height } = await img.metadata();
@@ -136,7 +154,22 @@ export async function labelImage({ input, spec, out, fontPath = DEFAULT_FONT }) 
   // (verified both orders -- each still yields channels=4). Flattening the finished buffer does
   // strip it, and paints the transparent background white rather than leaving it undefined-black.
   const composited = await img.composite(overlays).png().toBuffer();
-  await sharp(composited).flatten({ background: '#ffffff' }).png().toFile(out);
+  let flat = sharp(composited).flatten({ background: '#ffffff' });
+
+  // Optional storybook caption: a white strip below the picture with the caption in the brand
+  // font, so a panel reads on its own (shared, previewed, or embedded) without the doc around it.
+  if (spec.caption) {
+    const cap = await renderCaptionPng(spec.caption, width, height, spec, fontPath);
+    const pad = Math.round(height * 0.04);
+    const strip = cap.height + pad * 2;
+    flat = sharp(await flat.png().toBuffer())
+      .extend({ bottom: strip, background: '#ffffff' })
+      .composite([{ input: cap.buf, left: Math.round((width - cap.width) / 2), top: height + pad }]);
+    // same second-pass rule as above: the RGBA caption re-adds alpha, so flatten the finished buffer
+    flat = sharp(await flat.png().toBuffer()).flatten({ background: '#ffffff' });
+  }
+
+  await flat.png().toFile(out);
   return { out };
 }
 
@@ -146,6 +179,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const design = loadDesign(a['design-cwd'] || process.cwd());
   const spec = JSON.parse(readFileSync(a.labels, 'utf8'));
   spec.font ??= design.font.labels; spec.colors ??= design.colors;
+  if (a.caption) spec.caption = a.caption;
   const fontPath = a.font || (/\.(ttf|otf)$/i.test(design.font.labels) ? resolve(design.font.labels) : DEFAULT_FONT);
   const r = await labelImage({ input: a.in, spec, out: a.out, fontPath });
   console.log(JSON.stringify(r));

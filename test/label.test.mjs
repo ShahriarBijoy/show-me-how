@@ -55,3 +55,25 @@ test('labelImage writes only the png, no svg sidecar', async () => {
   const { data, info } = await sharp(r.out).raw().toBuffer({ resolveWithObject: true });
   assert.ok(data.some((v, i) => i % info.channels === 0 && v < 250), 'some non-white pixels drawn');
 });
+
+test('labelImage adds a caption strip below the picture when spec.caption is set', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-cap-'));
+  const input = await whitePng(join(dir, 'raw.png'));
+  const out = join(dir, '01.png');
+  const r = await labelImage({ input, spec: { ...spec, caption: 'The font takes the side door.' }, out });
+  const meta = await sharp(r.out).metadata();
+  assert.equal(meta.width, 640, 'width unchanged');
+  assert.ok(meta.height > 360, `canvas grew for the caption, got ${meta.height}`);
+  assert.equal(meta.hasAlpha, false);
+  // the strip is below the original picture and contains dark caption pixels
+  const strip = await sharp(r.out).extract({ left: 0, top: 360, width: 640, height: meta.height - 360 }).raw().toBuffer({ resolveWithObject: true });
+  assert.ok(strip.data.some((v, i) => i % strip.info.channels === 0 && v < 128), 'caption text drawn in the strip');
+});
+
+test('labelImage keeps the original size when there is no caption', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-nocap-'));
+  const input = await whitePng(join(dir, 'raw.png'));
+  const r = await labelImage({ input, spec, out: join(dir, '01.png') });
+  const meta = await sharp(r.out).metadata();
+  assert.equal(meta.height, 360);
+});
