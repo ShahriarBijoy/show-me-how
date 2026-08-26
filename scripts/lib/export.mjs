@@ -33,7 +33,7 @@ const CSS = `
   h1 { font-size: 2.2em; line-height: 1.2; margin: 0 0 .4em; }
   h3 { font-size: 1.45em; line-height: 1.3; margin: .6em 0 .3em; }
   p { margin: 0 0 1em; }
-  figure { margin: 2.5em 0 0; }
+  figure { margin: 2.5em 0 1em; }
   figure img { display: block; width: 100%; height: auto; border: 1px solid #e5e5e5; border-radius: 6px; }
   code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; background: #f4f4f4; padding: .1em .35em; border-radius: 4px; }
   .remember { margin-top: 2.5em; padding: 1em 1.2em; border-left: 4px solid #D93025; background: #fff5f4; }
@@ -57,7 +57,12 @@ export function renderStorybookHtml(markdown, dir) {
     let m;
     if (!line.trim()) { flush(); continue; }
     if ((m = line.match(/^# (.+)$/))) { flush(); title = m[1].trim(); out.push(`<h1>${esc(title)}</h1>`); continue; }
-    if ((m = line.match(/^(#{2,4}) (.+)$/))) { flush(); const n = m[1].length; out.push(`<h${n}>${inline(m[2].trim())}</h${n}>`); continue; }
+    if ((m = line.match(/^(#{2,4}) (.+)$/))) {
+      flush();
+      // A ### right after a panel is its caption, already baked into the image strip — skip it here.
+      if (m[1].length === 3 && out.length && out[out.length - 1].startsWith('<figure>')) continue;
+      const n = m[1].length; out.push(`<h${n}>${inline(m[2].trim())}</h${n}>`); continue;
+    }
     if ((m = line.match(/^!\[([^\]]*)\]\(([^)\s]+)\)$/))) {
       flush();
       out.push(`<figure><img src="${dataUri(m[2], dir)}" alt="${esc(m[1])}"></figure>`);

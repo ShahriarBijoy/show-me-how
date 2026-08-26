@@ -46,7 +46,9 @@ test('renderStorybookHtml inlines images and keeps the storybook structure', asy
   assert.match(html, /<h1>How labels land<\/h1>/);
   assert.equal((html.match(/<img src="data:image\/png;base64,/g) || []).length, 2, 'both images inlined');
   assert.equal(html.includes('src="01.png"'), false, 'no relative image links remain');
-  assert.match(html, /<h3>The picture arrives with no words on it\.<\/h3>/);
+  assert.equal(html.includes('<h3>'), false, 'panel captions are in the image strip, not repeated as headings');
+  assert.match(html, /<\/figure>
+<p>The backend draws/);
   assert.match(html, /<code>line art<\/code>/);
   assert.match(html, /<strong>Remember:<\/strong> 0\.5 is the middle/);
   assert.match(html, /<details><summary>Sources<\/summary>/);
