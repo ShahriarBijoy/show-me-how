@@ -3,8 +3,8 @@
 Two real runs of show-me-how on this repo, codex backend (`codex` 0.149.0,
 ChatGPT subscription), default Flow + Caveat brand. Working files (prompts,
 unlabelled generations) live in `.show-me-how/` during a run and are deleted
-afterwards; only the storybook ships. `hero.png` is the repo showcase image,
-copied from the first example.
+afterwards; only the storybook ships. `hero.png` is the repo showcase image: a one-off panel drawn with the same
+pipeline (prompt at `assets/hero-prompt.txt`) to picture the motivation in the README.
 
 **`explain-label-overlay/`** — `/show-me-how:explain label overlay`, on how
 `scripts/label.mjs` puts words onto a finished picture. `explain` shows the

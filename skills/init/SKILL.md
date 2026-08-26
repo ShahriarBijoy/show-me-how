@@ -30,6 +30,16 @@ Copy `${CLAUDE_PLUGIN_ROOT}/templates/design.md` to `REPO/design.md` and edit in
 
 1. If `${CLAUDE_PLUGIN_ROOT}/node_modules/sharp` is missing, run `npm install --silent` with cwd `${CLAUDE_PLUGIN_ROOT}`.
 2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" detect --cwd "REPO"` -> prints `backend: ...`. Show that line to the user verbatim.
+3. If the line starts with `backend: codex`, continue to step 4. Otherwise it starts with `backend: manual (codex not found)` or `backend: manual (codex found but ...)`; ask **one** question (AskUserQuestion if available, else plain text):
+
+   "Automatic images need the Codex CLI signed in with a **paid ChatGPT plan** (Plus or higher). Codex's image tool is not available on Free or API-key accounts. (a) I have a paid plan -- help me set up codex. (b) No / not now -- write prompt files I paste into ChatGPT or Gemini myself (manual)."
+
+   - (a): fix only what the detect line said is missing, in this order, then rerun detect and show the new line:
+     - not found -> run `npm i -g @openai/codex` yourself (ask permission first), then re-check.
+     - too old -> run `npm i -g @openai/codex@latest` yourself (ask permission first), then re-check.
+     - not logged in -> `codex login` is interactive and opens a browser, so you cannot run it. Tell the user to run it in their terminal (in Claude Code: `! codex login`), wait for them to say it is done, then re-check.
+     If detect still does not say `backend: codex` after one round, say so, leave `backend: auto` in `design.md` (codex is picked up whenever it becomes ready) and continue with manual for the test image.
+   - (b): set `backend: manual` in the `## Output` section of `REPO/design.md` so later runs stop repeating the codex hint. They can change it back to `auto` any time.
 
 ## 4. Test image
 

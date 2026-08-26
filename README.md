@@ -9,9 +9,15 @@
 
 Explain code, features and PRs with mascot-illustrated plain-language docs. Hand-drawn style, your brand, your font.
 
-A Claude Code plugin. Point it at a feature, a folder, or a topic; it reads the code, breaks it into story beats (as many as it needs), has a mascot act them out in hand-drawn style, and writes a short storybook with the panels in sequence. Works with your ChatGPT subscription (via the Codex CLI) or with any image tool by hand.
+A Claude Code plugin. Point it at a feature, a folder, or a topic; it reads the code, breaks it into story beats (as many as it needs), has a mascot act them out in hand-drawn style, and writes a short storybook with the panels in sequence. Works with a paid ChatGPT plan (via the Codex CLI) or with any image tool by hand.
 
 ![example](examples/hero.png)
+
+## Why this exists
+
+I have a bit of ADHD. A long design doc or a dense README is hard for me to get through, even when I care about what's in it; the attention runs out before the paragraphs do. A picture of the idea, with a mascot acting it out, works for me like nothing else: I get it in one glance and it sticks.
+
+That's what this tool is for. It's aimed at dev teams: people working on different features of the same project, or on different projects, who need to hand knowledge to each other. Instead of sharing a long document nobody finishes, you share a short storyboard: three to six panels, one caption each, that explain the feature, the PR or the concept. It's for the teammate who joins next week, the reviewer with 10 minutes, and anyone who reads the way I do.
 
 ## Install
 
@@ -41,7 +47,21 @@ claude --plugin-dir .
 
 ## Backends
 
-v1 tries, in order: `codex` CLI (ChatGPT subscription, auto-detected on PATH), then falls back to manual — a prompt file is written for you to paste into ChatGPT/Gemini and save back.
+| Backend | Needs | Cost | How it's chosen |
+|---|---|---|---|
+| `codex` | [Codex CLI](https://github.com/openai/codex) >= 0.149 on PATH, signed in with a **paid ChatGPT plan** (Plus or higher) | covered by your ChatGPT plan | auto-detected when installed, current and logged in |
+| `manual` | any image tool you already use (ChatGPT, Gemini, ...) | none | the fallback; a prompt file is written for you to paste and save back |
+
+Codex's built-in image tool is only available to paid ChatGPT logins; ChatGPT Free accounts and API-key logins can install codex but won't get images from it, so they should use `manual`.
+
+Installing codex, if you have a paid plan:
+
+```bash
+npm i -g @openai/codex
+codex login          # opens a browser
+```
+
+The plugin never installs codex by itself. `/show-me-how:init` checks for it and, if it's missing, too old or signed out, asks whether you want to set it up or stay on `manual`. Every command prints a `backend:` line with the same hint, so you're never left guessing why a run produced prompt files instead of pictures.
 
 Pin one instead of auto-detecting by setting `backend:` in `design.md` (`auto`, `codex`, or `manual`); `codex_model:` and `codex_reasoning:` in the same section tune which codex model runs the job and how hard it thinks (default: codex's own model at `low` effort).
 

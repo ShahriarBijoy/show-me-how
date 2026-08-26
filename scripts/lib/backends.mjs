@@ -60,19 +60,64 @@ export function defaultRun(cmd, args, { cwd } = {}) {
   });
 }
 
+export const CODEX_MIN_VERSION = '0.149.0';
+export const CODEX_INSTALL_HINT =
+  'For automatic images install codex: `npm i -g @openai/codex` then `codex login`. ' +
+  'Its image tool needs a paid ChatGPT plan (Plus or higher); Free or API-key accounts should keep using manual.';
+
 export const NOTES = {
   codex: 'codex (ChatGPT subscription)',
   manual: 'manual (no image CLI found: prompts will be written to files for you to run)',
 };
 
-export function detectBackend({ pinned = 'auto', which = defaultWhich } = {}) {
-  if (pinned !== 'auto') {
-    if (pinned === 'codex' && !which('codex')) throw new Error('design.md pins backend: codex but `codex` was not found on PATH. Install: npm i -g @openai/codex');
+function parseVersion(s) {
+  const m = String(s ?? '').match(/(\d+)\.(\d+)\.(\d+)/);
+  return m ? m.slice(1, 4).map(Number) : null;
+}
+function versionAtLeast(have, min) {
+  const a = parseVersion(have), b = parseVersion(min);
+  if (!a) return false;
+  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i];
+  return true;
+}
+
+// Sync because `detect` is sync. Two cheap codex calls: `--version` (a bare binary on PATH is not
+// enough -- image_generation needs >= 0.149) and `login status` (installed-but-signed-out is the
+// most common "it's there but every panel fails" state). `codex login status` prints
+// "Logged in using ChatGPT" / "Not logged in" and mirrors that in its exit code.
+export function defaultProbe() {
+  const opts = { encoding: 'utf8', shell: isWin, timeout: 15000 };
+  const v = spawnSync('codex', ['--version'], opts);
+  const version = v.status === 0 ? (parseVersion(v.stdout)?.join('.') ?? null) : null;
+  const l = spawnSync('codex', ['login', 'status'], opts);
+  const out = `${l.stdout ?? ''}${l.stderr ?? ''}`;
+  const loggedIn = l.status === 0 && !/not logged in/i.test(out);
+  return { version, loggedIn };
+}
+
+// Human-readable reasons codex cannot be used right now; empty when it is ready.
+export function codexProblems({ version, loggedIn }) {
+  const problems = [];
+  if (!version) problems.push('`codex --version` failed');
+  else if (!versionAtLeast(version, CODEX_MIN_VERSION)) problems.push(`codex ${version} is too old (need >= ${CODEX_MIN_VERSION}): npm i -g @openai/codex@latest`);
+  if (!loggedIn) problems.push('codex is not logged in: run `codex login` (paid ChatGPT plan needed for images)');
+  return problems;
+}
+
+export function detectBackend({ pinned = 'auto', which = defaultWhich, probe = defaultProbe } = {}) {
+  if (pinned !== 'auto' && pinned !== 'codex') {
     if (!(pinned in NOTES)) throw new Error(`Unknown backend "${pinned}". Use auto | codex | manual`);
-    return { name: pinned, note: NOTES[pinned] };
+    return { name: pinned, note: 'manual (pinned in design.md)' };
   }
-  if (which('codex')) return { name: 'codex', note: NOTES.codex };
-  return { name: 'manual', note: NOTES.manual };
+  if (!which('codex')) {
+    if (pinned === 'codex') throw new Error(`design.md pins backend: codex but \`codex\` was not found on PATH. ${CODEX_INSTALL_HINT}`);
+    return { name: 'manual', note: `manual (codex not found). ${CODEX_INSTALL_HINT}` };
+  }
+  const p = probe();
+  const problems = codexProblems(p);
+  if (!problems.length) return { name: 'codex', note: `codex ${p.version} (ChatGPT subscription)` };
+  if (pinned === 'codex') throw new Error(`design.md pins backend: codex but ${problems.join('; ')}`);
+  return { name: 'manual', note: `manual (codex found but ${problems.join('; ')})` };
 }
 
 // codex ships an image tool but does NOT expose it by default: a plain `codex exec` session only
