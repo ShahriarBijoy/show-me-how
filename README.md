@@ -1,5 +1,6 @@
 # show-me-how
 
+[![Release](https://img.shields.io/github/v/release/ShahriarBijoy/show-me-how?display_name=tag&sort=semver)](https://github.com/ShahriarBijoy/show-me-how/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node >=20.9](https://img.shields.io/badge/node-%3E%3D20.9-brightgreen.svg)](package.json)
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-D97757.svg)](https://code.claude.com/docs/en/plugins)
