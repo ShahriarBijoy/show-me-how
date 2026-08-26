@@ -1,28 +1,41 @@
 # How labels land on a finished picture
 
-Every panel in this repo is drawn twice: once as pure line art, once again when
-the words go on.
+Every panel is drawn twice: once as wordless line art by the image backend, once
+more when `scripts/label.mjs` puts the words on.
 
-![One wordless picture](01.png)
+![The picture arrives with no words](01.png)
 
-The image backend returns line art and nothing else — no letters, no numbers.
-Where a word belongs, the prompt asks for empty space instead.
+### The picture arrives with no words on it.
 
-![The label list drops the tiles in](02.png)
+The image backend is told to draw line art only — no letters, no numbers — and
+to leave empty space beside each key object. That space is where a label will go.
 
-`scripts/label.mjs` takes the raw PNG and a small JSON file. Each label carries
-x and y as fractions of the canvas, plus a kind that picks its colour.
+![Labels drop in from the list](02.png)
+
+### Each label lands where its fractions say.
+
+`label.mjs` reads a small JSON file: the label text, `x` and `y` as fractions of
+the canvas, and a `kind` (black, flow, warn, note) that picks its colour.
 
 ![The font takes the side door](03.png)
 
-The font cannot be reached through the usual SVG route, so the file is loaded
-directly by libvips and the result is flattened onto white.
+### The usual font route is locked, so the file goes in by the side door.
+
+SVG text cannot reach the brand font through fontconfig on Windows, so each label
+is rendered by libvips' text operation with the `.ttf` loaded directly.
+
+![Pressed flat, captioned, saved](04.png)
+
+### Pressed flat onto white, captioned, saved as one file.
+
+The composite is flattened onto white (backends return transparent PNGs more often
+than you'd think), a caption strip is added below in the same font, and only the
+finished PNG is written.
 
 **Remember:** coordinates are fractions of the canvas, not pixels — 0.5 is the middle whatever the image size.
 
 <details><summary>Sources</summary>
 
-- README.md
 - scripts/label.mjs
 - scripts/lib/design.mjs
 - skills/illustrate/SKILL.md

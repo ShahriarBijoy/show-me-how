@@ -19,6 +19,8 @@ Date: 2026-08-25. Supersedes the output-layout and `explain` sections of `2026-0
 
 Out of scope: composite comic-page image, speech bubbles, gemini backend, migrating existing docs (they are regenerated).
 
+**Amended 2026-08-26:** no target panel count (beat sheet decides, hard cap 8); every panel gets a one-line caption baked into the PNG as a strip in the brand font plus a `###` caption line and 1-2 sentence text in the doc.
+
 ## 1. Output layout
 
 ```

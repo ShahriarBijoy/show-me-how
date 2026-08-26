@@ -61,7 +61,7 @@ Panels are read in order, like a short comic. Each panel is one beat:
 3. **Twist** — the gotcha, the failure, the surprising rule. Only if the brief has one.
 4. **Payoff** — the result, or what the reader must now do.
 
-Panel count -> beats: 1 = a single before/after; 2 = setup + action; 3 = setup + action + (twist or payoff); 4-5 = all beats, action may split.
+Panel count follows the beats, not the other way round: 1 = a single before/after; 2 = setup + action; 3 = setup + action + (twist or payoff); 4-6 = all beats, action split into its real steps; up to 8 for a feature with several distinct mechanisms. If a beat would need two pictures to be understood, it is two beats.
 
 Continuity rule: one mascot, one drawing style, and the main object may carry across panels. What must change every panel is the mascot's physical action. A twist panel is the one place to introduce a second object (the thing that goes wrong).
 

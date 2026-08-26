@@ -1,6 +1,6 @@
 ---
 name: illustrate
-description: Engine for show-me-how. Plans 1-5 mascot panels for a brief as a short storybook, generates them in parallel via an image backend, overlays labels in the brand font, and writes one doc with the panels in sequence. Invoked by /show-me-how:explain, /show-me-how:write-doc and /show-me-how:pr-review; also usable when the user asks to "illustrate", "draw how X works", or "make an explainer image".
+description: Engine for show-me-how. Plans as many mascot panels as the story needs (typically 3-6, max 8) for a brief as a short storybook, generates them in parallel via an image backend, overlays labels in the brand font, and writes one doc with the panels in sequence. Invoked by /show-me-how:explain, /show-me-how:write-doc and /show-me-how:pr-review; also usable when the user asks to "illustrate", "draw how X works", or "make an explainer image".
 ---
 
 # illustrate
@@ -12,11 +12,11 @@ MODE: explain | doc
 TOPIC: <text>
 SOURCES: <list of files/commits read>
 BRIEF: <=200 words
-MAX_IMAGES: n
+MAX_IMAGES: n   (hard cap; the beat sheet decides the real count)
 OUTDIR: <optional, overrides DIR>
 ```
 
-If you were not given one, build it first: read the files the user points at, write BRIEF (<=200 words: what it is, who it is for, the 3-6 ideas a reader must get, the one gotcha), set `MODE=explain`, `MAX_IMAGES=3`.
+If you were not given one, build it first: read the files the user points at, write BRIEF (<=200 words: what it is, who it is for, the 3-6 ideas a reader must get, the one gotcha), set `MODE=explain`, `MAX_IMAGES=8`.
 
 `MODE` changes only one thing: `explain` echoes the finished doc in chat (step 6); `doc` prints its path. Both always save the file.
 
@@ -38,7 +38,7 @@ Before any script call below: if `${CLAUDE_PLUGIN_ROOT}/node_modules/sharp` is m
 
 ## 1. Beats
 
-From BRIEF pick at most `MAX_IMAGES` panels using "Beat sheet" in `references/composition-patterns.md`. Prefer fewer: skip anything that is better as one caption sentence. Panels form one continuous scene: same mascot, main object may carry over, the mascot's action must change every panel. One panel = one beat.
+Turn BRIEF into a beat sheet using "Beat sheet" in `references/composition-patterns.md`. There is no target number: use as many panels as the story needs, one beat each — a small helper needs 2-3, a multi-step feature 5-6. Never pad to fill and never squeeze two beats into one panel. `MAX_IMAGES` is only a hard cap. Panels form one continuous scene: same mascot, main object may carry over, the mascot's action must change every panel. One panel = one beat.
 
 ## 2. Panel list (show it, do not ask)
 
@@ -48,7 +48,8 @@ Print this, then continue without waiting for approval:
 NN  <beat>  <structure>   "<title>"
     <mascot>: <what it physically does>
     Labels: <2-5 short labels, <=4 words each>
-    Caption: <the 1-2 sentences that will sit under the panel, <=40 words>
+    Caption: <one line, <=12 words — baked into the panel in the brand font>
+    Text: <1-2 sentences, <=40 words — the description under the panel in the doc>
 ```
 
 `NN` is the zero-padded panel number (`01`, `02`, ...). `<beat>` is setup / action / twist / payoff.
@@ -85,13 +86,14 @@ Handle each result as its shell exits; do not wait for all of them before starti
    `x`/`y` are 0-1 fractions of width/height, placed in empty space next to the object they describe. The canvas is about 1672x941 and a label is centred on its `x`/`y`, so keep every centre within x 0.12-0.88 and y 0.08-0.94. `kind`: `black` (names), `flow` (movement), `warn` (the gotcha or result), `note` (side info). Max 5 labels, 2 arrows. Omit `colors`/`font` — the script fills them from `design.md`.
 2. Overlay:
    ```
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/label.mjs" --in "SCRATCH/NN.png" --labels "SCRATCH/NN.labels.json" --out "DIR/NN.png" --design-cwd "REPO"
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/label.mjs" --in "SCRATCH/NN.png" --labels "SCRATCH/NN.labels.json" --caption "<caption>" --out "DIR/NN.png" --design-cwd "REPO"
    ```
+   `--caption` is the panel's one-line caption from step 2; the script adds a white strip below the picture with that line in the brand font. Pass it for every panel.
 3. View `DIR/NN.png` once. If a label sits on line art or runs off the edge, nudge its `x`/`y` and rerun 4.2. At most one nudge per panel.
 
 ## 5. Write the storybook
 
-Only after every panel is either labelled or pending. Write `DOC` exactly in this shape — no `##` headings anywhere, the image order is the structure:
+Only after every panel is either labelled or pending. Write `DOC` exactly in this shape — no `##` section headings; each panel is the image, then its caption as a `###` line (so it reads large), then its text:
 
 ```
 # <Title>
@@ -100,11 +102,15 @@ Only after every panel is either labelled or pending. Write `DOC` exactly in thi
 
 ![<panel 1 title>](01.png)
 
-<caption 1>
+### <caption 1>
+
+<text 1>
 
 ![<panel 2 title>](02.png)
 
-<caption 2>
+### <caption 2>
+
+<text 2>
 
 **Remember:** <the one gotcha, one sentence>
 
@@ -114,7 +120,7 @@ Only after every panel is either labelled or pending. Write `DOC` exactly in thi
 </details>
 ```
 
-Word budget: each caption <=40 words; hook + captions + Remember together <=120 words for up to 3 panels, <=180 for 4-5. Plain language, no jargon dumps. Image links are relative to `DIR`, so no folder prefix.
+Word budget: caption <=12 words, text <=40 words per panel; hook + Remember <=60 words together. Every panel gets a caption and a text — an image alone is not a beat. Plain language, no jargon dumps. Image links are relative to `DIR`, so no folder prefix.
 
 For a pending panel, write `![<title> — pending](<REL>/.show-me-how/SLUG/NN.png)` where `<REL>` is one `..` per path segment of `DIR` relative to `REPO` (default `docs/show-me-how/<slug>` → `../../..`), followed by one line: `_Pending: prompt at <prompt file>._`
 

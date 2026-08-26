@@ -22,7 +22,9 @@ for (const slug of folders) {
 
     const md = readFileSync(join(EXAMPLES, slug, `${slug}.md`), 'utf8');
     assert.match(md, /^# .+/m, 'has a title');
-    assert.equal(/^##\s/m.test(md), false, 'no ## headings');
+    assert.equal(/^##\s/m.test(md), false, 'no ## section headings');
+    const captions = (md.match(/^### .+/gm) || []).length;
+    assert.equal(captions, pngs.length, 'one ### caption per panel');
     const links = [...md.matchAll(/!\[[^\]]*\]\((\d{2})\.png\)/g)].map((m) => m[1]);
     assert.deepEqual(links, pngs.map((p) => p.slice(0, 2)), 'images linked in order, relative, all present');
     assert.match(md, /^\*\*Remember:\*\* .+/m);

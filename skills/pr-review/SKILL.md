@@ -29,7 +29,7 @@ Write BRIEF (<=200 words): what changed, why (from the body/commits), how the pi
 
 ## 4. Illustrate
 
-MAX_IMAGES = 1 if the PR touches <=2 files, else 2. Beats: a single before/after panel, or setup (before) + payoff (after) with the request/data path as the action if there are 2.
+MAX_IMAGES = 4. Beats: before → what changed → after, plus one twist panel if the PR carries a risk; a tiny PR (<=2 files) may be a single before/after panel.
 
 Invoke the `illustrate` skill (`skills/illustrate/SKILL.md`) from its step 0, with this brief block:
 
@@ -38,7 +38,7 @@ MODE: doc
 TOPIC: pr-N-<title>
 SOURCES: <files changed from step 2.1>, <URL>
 BRIEF: <the text from step 3>
-MAX_IMAGES: <1 or 2>
+MAX_IMAGES: 4
 ```
 
 ## 5. Report

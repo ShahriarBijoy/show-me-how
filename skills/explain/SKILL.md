@@ -1,6 +1,6 @@
 ---
 name: explain
-description: Explain a feature, module, or concept from this repo as a short storybook — 1-3 mascot panels with captions — shown in chat and saved under docs/show-me-how/<topic>/<topic>.md.
+description: Explain a feature, module, or concept from this repo as a storybook — as many mascot panels as the topic needs, with captions — shown in chat and saved under docs/show-me-how/<topic>/<topic>.md.
 disable-model-invocation: true
 ---
 
@@ -17,7 +17,7 @@ TOPIC = "$ARGUMENTS". If empty, ask the user for a topic and stop — do not gue
 
 ## 2. Brief
 
-Write BRIEF (<=200 words): what it is, who uses it, the 3 ideas a newcomer must get, the one gotcha.
+Write BRIEF (<=200 words): what it is, who uses it, the ideas a newcomer must get (as many as the topic really has), the one gotcha.
 
 ## 3. Illustrate
 
@@ -28,7 +28,7 @@ MODE: explain
 TOPIC: <TOPIC>
 SOURCES: <the paths from step 1.3>
 BRIEF: <the text from step 2>
-MAX_IMAGES: 3
+MAX_IMAGES: 8
 ```
 
 Illustrate prints the finished storybook in chat and saves it as `<docs>/<slug>/<slug>.md`; do not duplicate its output.
