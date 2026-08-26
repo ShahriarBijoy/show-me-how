@@ -54,6 +54,30 @@ If you have `openai/codex-plugin-cc` installed, `/codex:rescue` can run the same
 - Font for labels: Caveat (bundled, OFL), or a local `.ttf`/`.otf` path.
 - Colors, tone, and the docs output folder are also editable fields.
 
+### Your own character, per project
+
+The character is read from the `design.md` in whichever repo you run the command in, so each project can have its own. Two ways to set it:
+
+1. **Guided:** run `/show-me-how:init` in that repo. The first question offers Flow, a description of your own, or 1-3 reference images plus a description. It writes `design.md` and draws one test image so you see the character before a real doc.
+2. **By hand:** create or edit `design.md` at the repo root. The mascot section looks like this:
+
+```markdown
+## Mascot
+name: Pixel
+description: a squat grey robot on tank treads, one big round lens for an eye, stubby claw arms; calm, methodical
+references:
+  - brand/pixel-front.png
+  - brand/pixel-working.png
+never: smiling, humanoid face, wheels instead of treads, standing idle
+```
+
+- `name` and `description` go verbatim into every image prompt ("Pixel must PERFORM the core action"), so describe shape, eyes, limbs and expression concretely.
+- `references` are optional image paths relative to the repo root, passed to the backend as style anchors. Drop the list to rely on text only.
+- `never` matters as much as `description`: it is what stops the model drifting into a generic cute mascot.
+- Delete any line to fall back to the default.
+
+A silhouette that reads at small size (a blob, a box, a simple robot) works better than a detailed character, because the mascot is drawn *doing* something in thin line art with no colour fill.
+
 ## How it works
 
 1. Understand: read the topic's source files or commits, write a short brief.
