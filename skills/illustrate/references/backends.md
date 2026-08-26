@@ -2,10 +2,12 @@
 
 Run once per session: `node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" detect --cwd "REPO"` (`REPO` = the repo root) and echo its line to the user.
 
-| Backend | When | Cost | Refs |
+| Backend | When | Needs | Refs |
 |---|---|---|---|
-| codex | `codex` on PATH | ChatGPT subscription | yes (`--ref`) |
-| manual | otherwise | none | user's tool |
+| codex | `codex` >= 0.149 on PATH **and** `codex login` done | paid ChatGPT plan (Plus or higher) -- codex's image tool is not available on Free or API-key logins | yes (`--ref`) |
+| manual | otherwise | any image tool the user has (ChatGPT, Gemini, ...) | user's tool |
+
+`detect` probes `codex --version` and `codex login status`; when codex is absent, too old or signed out it falls back to manual and the printed line says what to install or run. Codex is never installed on the user's behalf -- `/show-me-how:init` asks first.
 
 Generate one panel (`<scratch>` = `<repo>/.show-me-how/<slug>`):
 ```

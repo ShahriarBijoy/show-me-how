@@ -4,24 +4,55 @@ import { mkdtempSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { detectBackend, generate, buildCodexArgs, defaultWhich } from '../scripts/lib/backends.mjs';
+import { detectBackend, generate, buildCodexArgs, defaultWhich, codexProblems, CODEX_MIN_VERSION } from '../scripts/lib/backends.mjs';
 
 // true when `flag` appears immediately followed by `value` somewhere in argv
 const hasPair = (args, flag, value) => args.some((a, i) => a === flag && args[i + 1] === value);
 
-test('detect prefers codex when present', () => {
-  const r = detectBackend({ which: (c) => c === 'codex' });
+const ready = () => ({ version: CODEX_MIN_VERSION, loggedIn: true });
+
+test('detect prefers codex when present, current and logged in', () => {
+  const r = detectBackend({ which: (c) => c === 'codex', probe: ready });
   assert.equal(r.name, 'codex');
   assert.match(r.note, /subscription/i);
+  assert.ok(r.note.includes(CODEX_MIN_VERSION));
 });
 
-test('detect falls back to manual', () => {
-  assert.equal(detectBackend({ which: () => false }).name, 'manual');
+test('detect falls back to manual with an install hint when codex is missing', () => {
+  const r = detectBackend({ which: () => false, probe: () => { throw new Error('must not probe'); } });
+  assert.equal(r.name, 'manual');
+  assert.match(r.note, /codex not found/);
+  assert.match(r.note, /npm i -g @openai\/codex/);
+  assert.match(r.note, /paid ChatGPT plan/i);
+});
+
+test('detect falls back to manual when codex is installed but not logged in', () => {
+  const r = detectBackend({ which: () => true, probe: () => ({ version: CODEX_MIN_VERSION, loggedIn: false }) });
+  assert.equal(r.name, 'manual');
+  assert.match(r.note, /codex found but/);
+  assert.match(r.note, /codex login/);
+});
+
+test('detect falls back to manual when codex is too old', () => {
+  const r = detectBackend({ which: () => true, probe: () => ({ version: '0.120.3', loggedIn: true }) });
+  assert.equal(r.name, 'manual');
+  assert.match(r.note, /0\.120\.3 is too old/);
+  assert.match(r.note, /@openai\/codex@latest/);
+});
+
+test('codexProblems: newer versions pass, missing version fails', () => {
+  assert.deepEqual(codexProblems({ version: '1.2.0', loggedIn: true }), []);
+  assert.deepEqual(codexProblems({ version: '0.150.0', loggedIn: true }), []);
+  assert.equal(codexProblems({ version: null, loggedIn: true }).length, 1);
+  assert.equal(codexProblems({ version: null, loggedIn: false }).length, 2);
 });
 
 test('pinned backend wins even if missing (error surfaces)', () => {
-  assert.throws(() => detectBackend({ pinned: 'codex', which: () => false }), /codex.*not found/i);
+  assert.throws(() => detectBackend({ pinned: 'codex', which: () => false }), /codex.*not found.*npm i -g @openai\/codex/is);
+  assert.throws(() => detectBackend({ pinned: 'codex', which: () => true, probe: () => ({ version: CODEX_MIN_VERSION, loggedIn: false }) }), /pins backend: codex but.*codex login/s);
   assert.equal(detectBackend({ pinned: 'manual', which: () => true }).name, 'manual');
+  assert.match(detectBackend({ pinned: 'manual', which: () => true }).note, /pinned/);
+  assert.throws(() => detectBackend({ pinned: 'dalle' }), /Unknown backend/);
 });
 
 test('buildCodexArgs includes refs and out path in prompt', () => {
@@ -214,7 +245,7 @@ test('defaultRun gives the child a closed stdin so a CLI that reads stdin cannot
 
 test('backend.mjs CLI detect prints codex or manual note', () => {
   const out = execFileSync(process.execPath, ['scripts/backend.mjs', 'detect']).toString();
-  assert.match(out, /^backend: (codex \(ChatGPT subscription\)|manual \(no image CLI found[^)]*\))\n$/);
+  assert.match(out, /^backend: (codex \d+\.\d+\.\d+ \(ChatGPT subscription\)|manual \(codex (not found|found but)[^\n]*)\n$/);
 });
 
 // Helper: run the generate CLI in a temp cwd carrying the given design.md, returning parsed JSON.
