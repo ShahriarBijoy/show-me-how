@@ -11,7 +11,7 @@ export const DEFAULTS = Object.freeze({
   font: { labels: 'Caveat' },
   colors: { flow: '#F28C28', warn: '#D93025', note: '#1A73E8' },
   tone: 'deadpan, absurd, clean',
-  output: { docs: 'docs/show-me-how/', backend: 'auto', codexModel: '', codexReasoning: 'low', imageFormat: 'webp', imageQuality: 80 },
+  output: { docs: 'docs/show-me-how/', backend: 'auto', codexModel: '', codexReasoning: 'low', imageFormat: 'webp', imageQuality: 80, imageModel: '', imageApiQuality: 'medium' },
 });
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -19,6 +19,8 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
 // than the same picture as PNG (about 45 KB vs 700 KB), which is what keeps the exported HTML
 // small enough to mail. PNG stays available for anyone who needs it.
 export const IMAGE_FORMATS = ['webp', 'png'];
+// Quality tiers accepted by the openai-api backend (gpt-image models). Gemini ignores it.
+export const IMAGE_API_QUALITIES = ['low', 'medium', 'high'];
 
 function stripComment(line) {
   // remove "# ..." unless the # is inside quotes
@@ -63,7 +65,7 @@ export function parseDesign(text) {
         d.colors[k] = v.toUpperCase();
       } else if (section === 'output') {
         // snake_case in design.md, camelCase in the parsed object
-        const key = { codex_model: 'codexModel', codex_reasoning: 'codexReasoning', image_format: 'imageFormat', image_quality: 'imageQuality' }[k] ?? k;
+        const key = { codex_model: 'codexModel', codex_reasoning: 'codexReasoning', image_format: 'imageFormat', image_quality: 'imageQuality', image_model: 'imageModel', image_api_quality: 'imageApiQuality' }[k] ?? k;
         if (key === 'imageFormat') {
           const f = v.toLowerCase();
           if (!IMAGE_FORMATS.includes(f)) throw new Error(`show-me-how.md: image_format must be ${IMAGE_FORMATS.join(' | ')}, got "${v}"`);
@@ -72,6 +74,10 @@ export function parseDesign(text) {
           const q = Number(v);
           if (!Number.isInteger(q) || q < 1 || q > 100) throw new Error(`show-me-how.md: image_quality must be a whole number from 1 to 100, got "${v}"`);
           d.output.imageQuality = q;
+        } else if (key === 'imageApiQuality') {
+          const q = v.toLowerCase();
+          if (!IMAGE_API_QUALITIES.includes(q)) throw new Error(`show-me-how.md: image_api_quality must be ${IMAGE_API_QUALITIES.join(' | ')}, got "${v}"`);
+          d.output.imageApiQuality = q;
         } else if (key in d.output) d.output[key] = v;
       }
       continue;

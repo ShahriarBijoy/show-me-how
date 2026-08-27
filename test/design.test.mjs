@@ -90,3 +90,18 @@ test('show-me-how.md wins over a marked legacy design.md', () => {
   writeFileSync(join(dir, DESIGN_FILE), '## Mascot\nname: New\n');
   assert.equal(loadDesign(dir).mascot.name, 'New');
 });
+
+test('output defaults include image_model and image_api_quality', () => {
+  assert.equal(DEFAULTS.output.imageModel, '');
+  assert.equal(DEFAULTS.output.imageApiQuality, 'medium');
+});
+
+test('image_model and image_api_quality parse from ## Output', () => {
+  const d = parseDesign('## Output\nimage_model: gpt-image-1-mini\nimage_api_quality: LOW\n');
+  assert.equal(d.output.imageModel, 'gpt-image-1-mini');
+  assert.equal(d.output.imageApiQuality, 'low');
+});
+
+test('image_api_quality rejects values the APIs do not accept', () => {
+  assert.throws(() => parseDesign('## Output\nimage_api_quality: ultra\n'), /image_api_quality must be low \| medium \| high, got "ultra"/);
+});
