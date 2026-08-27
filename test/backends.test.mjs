@@ -248,9 +248,9 @@ test('backend.mjs CLI detect prints codex or manual note', () => {
   assert.match(out, /^backend: (codex \d+\.\d+\.\d+ \(ChatGPT subscription\)|manual \(codex (not found|found but)[^\n]*)\n$/);
 });
 
-// Helper: run the generate CLI in a temp cwd carrying the given design.md, returning parsed JSON.
+// Helper: run the generate CLI in a temp cwd carrying the given show-me-how.md, returning parsed JSON.
 // execFileSync throws on a non-zero exit, so reaching the JSON.parse at all proves exit code 0.
-function runGenerate(designMd) {
+function runGenerate(designMd, envOverride = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'smh-cli-'));
   writeFileSync(join(dir, 'show-me-how.md'), designMd);
   const promptFile = join(dir, 'p.txt');
@@ -259,7 +259,7 @@ function runGenerate(designMd) {
   const stdout = execFileSync(process.execPath, [
     join(process.cwd(), 'scripts/backend.mjs'), 'generate',
     '--prompt-file', promptFile, '--out', out, '--cwd', dir,
-  ]).toString();
+  ], { env: { ...process.env, ...envOverride } }).toString();
   return { dir, out, result: JSON.parse(stdout) };
 }
 
@@ -373,4 +373,35 @@ test('resolveModel and estimateUsd', () => {
   assert.equal(estimateUsd('openai-api', 'gpt-image-2', 'high'), 0.30);
   assert.equal(estimateUsd('codex', ''), undefined);
   assert.ok(MODELS['gemini-api'].some((m) => m.default));
+});
+
+test('generate dispatches to gemini-api with the resolved model and reports estimatedUsd', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-'));
+  let seen;
+  const fetch = async (url, init) => { seen = { url, init }; return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: 'AAAA' } }] } }] }), text: async () => '' }; };
+  const r = await generate({ backend: 'gemini-api', prompt: 'p', out: 'raw/01.png', cwd: dir, imageModel: '', env: { GEMINI_API_KEY: 'k' }, fetch });
+  assert.equal(r.ok, true);
+  assert.equal(r.estimatedUsd, 0.067);
+  assert.match(seen.url, /gemini-3\.1-flash-image:generateContent$/);
+});
+
+test('generate dispatches to openai-api honouring imageApiQuality and reports estimatedUsd', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-'));
+  let seen;
+  const fetch = async (url, init) => { seen = { url, init }; return { ok: true, status: 200, json: async () => ({ data: [{ b64_json: 'AAAA' }] }), text: async () => '' }; };
+  const r = await generate({ backend: 'openai-api', prompt: 'p', out: 'raw/01.png', cwd: dir, imageModel: 'gpt-image-1-mini', imageApiQuality: 'low', env: { OPENAI_API_KEY: 'k' }, fetch });
+  assert.equal(r.estimatedUsd, 0.01);
+  assert.equal(JSON.parse(seen.init.body).quality, 'low');
+});
+
+test('codex and manual results carry no estimatedUsd', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-'));
+  const r = await generate({ backend: 'manual', prompt: 'p', out: 'raw/01.png', cwd: dir });
+  assert.equal(r.estimatedUsd, undefined);
+});
+
+test('backend.mjs CLI generate with a pinned gemini-api backend and no key reports ok:false naming the key, exit 0', () => {
+  const { result } = runGenerate('## Output\nbackend: gemini-api\n', { GEMINI_API_KEY: '' });
+  assert.equal(result.ok, false);
+  assert.match(result.stderr, /GEMINI_API_KEY is not set/);
 });
