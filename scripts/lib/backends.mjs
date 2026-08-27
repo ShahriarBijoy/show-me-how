@@ -28,16 +28,15 @@ export const MODELS = {
     { id: 'gpt-image-1.5',    label: 'GPT Image 1.5',    usdPerPanel: { low: 0.02, medium: 0.10, high: 0.30 } },
     { id: 'gpt-image-1-mini', label: 'GPT Image 1 mini', usdPerPanel: { low: 0.01, medium: 0.02, high: 0.05 } },
   ],
-  // OpenRouter passes vendor list prices through. Only a curated few are priced here; any other
-  // `vendor/model` id from https://openrouter.ai/api/v1/images/models is accepted (the response
-  // reports the real cost either way).
+  // OpenRouter passes vendor list prices through. Four curated picks (image-edit arena rank,
+  // price at 1K, reference limit, 16:9 support -- see docs/research/image-backends.md); any other
+  // `vendor/model` id from https://openrouter.ai/api/v1/images/models is accepted, and the
+  // response reports the real cost either way.
   openrouter: [
     { id: 'google/gemini-3.1-flash-image',      label: 'Nano Banana 2',      usdPerPanel: 0.067, default: true },
-    { id: 'google/gemini-3.1-flash-lite-image', label: 'Nano Banana 2 Lite', usdPerPanel: 0.034 },
     { id: 'openai/gpt-image-2',                 label: 'GPT Image 2',        usdPerPanel: 0.10 },
-    { id: 'openai/gpt-image-1-mini',            label: 'GPT Image 1 mini',   usdPerPanel: 0.02 },
-    { id: 'black-forest-labs/flux.2-pro',       label: 'FLUX.2 pro',         usdPerPanel: 0.03 },
-    { id: 'bytedance-seed/seedream-4.5',        label: 'Seedream 4.5',       usdPerPanel: 0.03 },
+    { id: 'bytedance-seed/seedream-5-0-pro',    label: 'Seedream 5.0 Pro',   usdPerPanel: 0.045 },
+    { id: 'google/gemini-3.1-flash-lite-image', label: 'Nano Banana 2 Lite', usdPerPanel: 0.034 },
   ],
 };
 

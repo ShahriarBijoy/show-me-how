@@ -52,7 +52,7 @@ claude --plugin-dir .
 | `codex` | [Codex CLI](https://github.com/openai/codex) >= 0.149 on PATH, signed in with a **paid ChatGPT plan** (Plus or higher) | covered by your ChatGPT plan | auto-detected when installed, current and logged in |
 | `gemini-api` | `GEMINI_API_KEY` in your environment ([get a key](https://aistudio.google.com/apikey)) | ~$0.03-0.13 per panel (Nano Banana 2 family; no free tier for image models) | auto-detected when the variable is set |
 | `openai-api` | `OPENAI_API_KEY` in your environment ([get a key](https://platform.openai.com/api-keys)) | ~$0.01-0.30 per panel (`gpt-image-2` default; `gpt-image-1-mini` is the budget option) | auto-detected when the variable is set |
-| `openrouter` | `OPENROUTER_API_KEY` in your environment ([get a key](https://openrouter.ai/keys)) | vendor list price per panel; one key covers Gemini, GPT Image, FLUX, Seedream and more, and every run reports the real charge | auto-detected when the variable is set |
+| `openrouter` | `OPENROUTER_API_KEY` in your environment ([get a key](https://openrouter.ai/keys)) | vendor list price per panel (~$0.03-0.10); one key covers Nano Banana 2, GPT Image 2, Seedream 5 and 40+ more, and every run reports the real charge | auto-detected when the variable is set |
 | `manual` | any image tool you already use (ChatGPT, Gemini, ...) | none | the fallback; a prompt file is written for you to paste and save back |
 
 Detection order for `auto` is codex, then Gemini, then OpenAI, then OpenRouter. Prices are approximate list prices as of 2026-08; each run prints its estimate. `/show-me-how:init` walks you through the choice, with the cost of each model, when nothing is detected.
