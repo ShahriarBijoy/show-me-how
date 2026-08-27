@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/ShahriarBijoy/show-me-how/compare/v0.5.0...v0.5.1) (2026-08-27)
+
+
+### Bug Fixes
+
+* **illustrate:** poll result files instead of waiting for background-shell notifications ([5180516](https://github.com/ShahriarBijoy/show-me-how/commit/5180516f6c9c1ea12cfc6d6af819ca57ce986d28))
+
 ## [0.5.0](https://github.com/ShahriarBijoy/show-me-how/compare/v0.4.1...v0.5.0) (2026-08-27)
 
 
