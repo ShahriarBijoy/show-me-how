@@ -11,7 +11,7 @@ export const DEFAULTS = Object.freeze({
   font: { labels: 'Caveat' },
   colors: { flow: '#F28C28', warn: '#D93025', note: '#1A73E8' },
   tone: 'deadpan, absurd, clean',
-  output: { docs: 'docs/show-me-how/', backend: 'auto', codexModel: '', codexReasoning: 'low', imageFormat: 'webp', imageQuality: 80 },
+  output: { docs: 'docs/show-me-how/', backend: 'auto', codexModel: '', codexReasoning: 'low', imageFormat: 'webp', imageQuality: 80, imageModel: '', imageApiQuality: 'medium' },
 });
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -19,6 +19,8 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
 // than the same picture as PNG (about 45 KB vs 700 KB), which is what keeps the exported HTML
 // small enough to mail. PNG stays available for anyone who needs it.
 export const IMAGE_FORMATS = ['webp', 'png'];
+// Quality tiers accepted by the openai-api backend (gpt-image models). Gemini ignores it.
+export const IMAGE_API_QUALITIES = ['low', 'medium', 'high'];
 
 function stripComment(line) {
   // remove "# ..." unless the # is inside quotes
@@ -59,19 +61,23 @@ export function parseDesign(text) {
         else if (k in d.mascot) d.mascot[k] = v;
       } else if (section === 'font' && k === 'labels') d.font.labels = v;
       else if (section === 'colors' && k in d.colors) {
-        if (!HEX.test(v)) throw new Error(`design.md: color "${k}" must be a 6-digit hex like #F28C28, got "${v}"`);
+        if (!HEX.test(v)) throw new Error(`show-me-how.md: color "${k}" must be a 6-digit hex like #F28C28, got "${v}"`);
         d.colors[k] = v.toUpperCase();
       } else if (section === 'output') {
         // snake_case in design.md, camelCase in the parsed object
-        const key = { codex_model: 'codexModel', codex_reasoning: 'codexReasoning', image_format: 'imageFormat', image_quality: 'imageQuality' }[k] ?? k;
+        const key = { codex_model: 'codexModel', codex_reasoning: 'codexReasoning', image_format: 'imageFormat', image_quality: 'imageQuality', image_model: 'imageModel', image_api_quality: 'imageApiQuality' }[k] ?? k;
         if (key === 'imageFormat') {
           const f = v.toLowerCase();
-          if (!IMAGE_FORMATS.includes(f)) throw new Error(`design.md: image_format must be ${IMAGE_FORMATS.join(' | ')}, got "${v}"`);
+          if (!IMAGE_FORMATS.includes(f)) throw new Error(`show-me-how.md: image_format must be ${IMAGE_FORMATS.join(' | ')}, got "${v}"`);
           d.output.imageFormat = f;
         } else if (key === 'imageQuality') {
           const q = Number(v);
-          if (!Number.isInteger(q) || q < 1 || q > 100) throw new Error(`design.md: image_quality must be a whole number from 1 to 100, got "${v}"`);
+          if (!Number.isInteger(q) || q < 1 || q > 100) throw new Error(`show-me-how.md: image_quality must be a whole number from 1 to 100, got "${v}"`);
           d.output.imageQuality = q;
+        } else if (key === 'imageApiQuality') {
+          const q = v.toLowerCase();
+          if (!IMAGE_API_QUALITIES.includes(q)) throw new Error(`show-me-how.md: image_api_quality must be ${IMAGE_API_QUALITIES.join(' | ')}, got "${v}"`);
+          d.output.imageApiQuality = q;
         } else if (key in d.output) d.output[key] = v;
       }
       continue;
@@ -81,7 +87,29 @@ export function parseDesign(text) {
   return d;
 }
 
+// The config file is `show-me-how.md` at the repo root. It used to be `design.md`, which collided
+// with the very common "our product's design doc" file: /init refused to run because it thought
+// the foreign file was ours, and every other command parsed that doc as config (throwing on a
+// `flow: teal` colour, or silently adopting its `docs:` folder). A legacy `design.md` is still
+// honoured, but only when it starts with the marker line the template has always written.
+export const DESIGN_FILE = 'show-me-how.md';
+export const LEGACY_DESIGN_FILE = 'design.md';
+export const DESIGN_MARKER = '# show-me-how design';
+
+function hasMarker(p) {
+  return readFileSync(p, 'utf8').split(/\r?\n/, 1)[0].trim() === DESIGN_MARKER;
+}
+
+// Absolute path of the config file in use, or null when the repo has none (a foreign design.md counts as none).
+export function findDesignFile(cwd = process.cwd()) {
+  const p = join(cwd, DESIGN_FILE);
+  if (existsSync(p)) return p;
+  const legacy = join(cwd, LEGACY_DESIGN_FILE);
+  if (existsSync(legacy) && hasMarker(legacy)) return legacy;
+  return null;
+}
+
 export function loadDesign(cwd = process.cwd()) {
-  const p = join(cwd, 'design.md');
-  return existsSync(p) ? parseDesign(readFileSync(p, 'utf8')) : structuredClone(DEFAULTS);
+  const p = findDesignFile(cwd);
+  return p ? parseDesign(readFileSync(p, 'utf8')) : structuredClone(DEFAULTS);
 }

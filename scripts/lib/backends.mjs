@@ -1,191 +1,112 @@
-import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import * as codex from './backends/codex.mjs';
+import * as gemini from './backends/gemini.mjs';
+import * as openai from './backends/openai.mjs';
+import * as openrouter from './backends/openrouter.mjs';
+import * as manual from './backends/manual.mjs';
 
-const isWin = process.platform === 'win32';
+export { defaultWhich, defaultRun, defaultProbe, codexProblems, buildCodexArgs, CODEX_MIN_VERSION, CODEX_INSTALL_HINT } from './backends/codex.mjs';
 
-export function defaultWhich(cmd) {
-  const r = spawnSync(isWin ? 'where' : 'which', [cmd], { encoding: 'utf8', shell: isWin });
-  return r.status === 0;
+// Detection order for `backend: auto`. Subscription first (no per-image charge), then the APIs.
+export const ORDER = ['codex', 'gemini-api', 'openai-api', 'openrouter'];
+export const BACKENDS = { codex, 'gemini-api': gemini, 'openai-api': openai, openrouter, manual };
+
+// Single source of truth for model ids and rough cost. Gemini: list price per 1K image.
+// OpenAI: token-priced; these are per-image figures at 1536x1024 with 1-3 reference images,
+// rounded up so a doc estimate errs high. Every place that shows them says "approx." and
+// cites PRICES_AS_OF. See docs/research/image-backends.md for sources.
+export const PRICES_AS_OF = '2026-08';
+export const MODELS = {
+  'gemini-api': [
+    { id: 'gemini-3.1-flash-image',      label: 'Nano Banana 2',      usdPerPanel: 0.067, default: true },
+    { id: 'gemini-3.1-flash-lite-image', label: 'Nano Banana 2 Lite', usdPerPanel: 0.034 },
+    { id: 'gemini-3-pro-image',          label: 'Nano Banana Pro',    usdPerPanel: 0.134 },
+  ],
+  'openai-api': [
+    { id: 'gpt-image-2',      label: 'GPT Image 2',      usdPerPanel: { low: 0.02, medium: 0.10, high: 0.30 }, default: true },
+    { id: 'gpt-image-1.5',    label: 'GPT Image 1.5',    usdPerPanel: { low: 0.02, medium: 0.10, high: 0.30 } },
+    { id: 'gpt-image-1-mini', label: 'GPT Image 1 mini', usdPerPanel: { low: 0.01, medium: 0.02, high: 0.05 } },
+  ],
+  // OpenRouter passes vendor list prices through. Four curated picks (image-edit arena rank,
+  // price at 1K, reference limit, 16:9 support -- see docs/research/image-backends.md); any other
+  // `vendor/model` id from https://openrouter.ai/api/v1/images/models is accepted, and the
+  // response reports the real cost either way.
+  openrouter: [
+    { id: 'google/gemini-3.1-flash-image',      label: 'Nano Banana 2',      usdPerPanel: 0.067, default: true },
+    { id: 'openai/gpt-image-2',                 label: 'GPT Image 2',        usdPerPanel: 0.10 },
+    { id: 'bytedance-seed/seedream-5-0-pro',    label: 'Seedream 5.0 Pro',   usdPerPanel: 0.045 },
+    { id: 'google/gemini-3.1-flash-lite-image', label: 'Nano Banana 2 Lite', usdPerPanel: 0.034 },
+  ],
+};
+
+// '' means the backend's default model. Unknown ids are rejected here, at detect time, so a typo
+// in show-me-how.md fails before the user has waited on a generation.
+export function resolveModel(backend, imageModel = '') {
+  const list = MODELS[backend];
+  if (!list) return '';
+  if (!imageModel) return list.find((m) => m.default).id;
+  if (backend === 'openrouter') {
+    if (!/^[\w.-]+\/[\w.:-]+$/.test(imageModel)) throw new Error(`show-me-how.md: image_model "${imageModel}" is not an openrouter model id (expected vendor/model, e.g. ${list.map((m) => m.id).slice(0, 2).join(' | ')})`);
+    return imageModel;
+  }
+  if (!list.some((m) => m.id === imageModel)) {
+    throw new Error(`show-me-how.md: image_model "${imageModel}" is not a ${backend} model. Use ${list.map((m) => m.id).join(' | ')}`);
+  }
+  return imageModel;
 }
 
-// Windows-only. Two things were verified empirically (see task-3-report.md) before landing on
-// this shape:
-//   1. Spawning a `.cmd`/`.bat` shim (which is what npm-installed CLIs like `codex` are on
-//      Windows) with `shell:false` throws EINVAL synchronously -- Node refuses to CreateProcess
-//      a batch file directly (post-CVE hardening), so some form of cmd.exe involvement is
-//      mandatory to run codex at all on Windows.
-//   2. Node's own `shell:true` builds the child's command line by naively quoting each arg
-//      (wrap in quotes if it has a space) and does NOT escape cmd.exe metacharacters
-//      (& | % ^ ( ) < > !), so an instruction containing e.g. " & " silently splits into two
-//      commands. Separately, cmd.exe's own command-line parser cannot carry a literal newline
-//      inside a single argument under ANY quoting/escaping scheme -- it truncates the command
-//      at the first \n. That is a cmd.exe parser limitation, not a Node bug, so no amount of
-//      escaping fixes it; the newline has to be removed before it reaches cmd.exe.
-// The fix: build the full command line ourselves with cross-spawn-style escaping (quote the
-// arg, backslash-escape embedded quotes, then caret-escape cmd.exe metacharacters) and hand it
-// to cmd.exe verbatim via `windowsVerbatimArguments: true`, bypassing Node's own quoting. Long
-// instructions with embedded newlines get those newlines collapsed to spaces first, since they
-// cannot survive cmd.exe regardless -- an accepted, documented tradeoff for a natural-language
-// image prompt where a line break carries no semantic meaning to the model.
-function escapeArgForWindowsShell(arg) {
-  let a = String(arg).replace(/\r?\n/g, ' ');
-  a = a.replace(/(\\*)"/g, '$1$1\\"');
-  a = a.replace(/(\\*)$/, '$1$1');
-  a = `"${a}"`;
-  a = a.replace(/(["^&|<>()%!;, ])/g, '^$1');
-  return a;
+export function estimateUsd(backend, modelId, quality = 'medium') {
+  const m = MODELS[backend]?.find((x) => x.id === modelId);
+  if (!m) return undefined;
+  return typeof m.usdPerPanel === 'number' ? m.usdPerPanel : m.usdPerPanel[quality];
 }
 
-// stdin MUST be 'ignore', not the default 'pipe'. `codex exec` checks whether stdin is a pipe and,
-// if it is, blocks reading it for extra prompt input ("Reading additional input from stdin...").
-// With the default stdio the parent holds that pipe open forever, so codex waits forever, burning
-// no CPU and writing no session -- a silent hang that looks exactly like a slow model. Handing it
-// an already-closed stdin makes it skip that path and start immediately.
-const STDIO = ['ignore', 'pipe', 'pipe'];
-
-export function defaultRun(cmd, args, { cwd } = {}) {
-  return new Promise((res) => {
-    let p;
-    if (isWin) {
-      const commandLine = [escapeArgForWindowsShell(cmd), ...args.map(escapeArgForWindowsShell)].join(' ');
-      p = spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', commandLine], { cwd, windowsVerbatimArguments: true, stdio: STDIO });
-    } else {
-      p = spawn(cmd, args, { cwd, shell: false, stdio: STDIO });
-    }
-    let stdout = '', stderr = '';
-    p.stdout.on('data', d => stdout += d); p.stderr.on('data', d => stderr += d);
-    p.on('close', code => res({ code: code ?? 1, stdout, stderr }));
-    p.on('error', () => res({ code: 1, stdout, stderr: 'spawn failed' }));
-  });
+function apiNote(backend, modelId, quality) {
+  const q = backend === 'openai-api' ? ` ${quality}` : '';
+  const usd = estimateUsd(backend, modelId, quality);
+  const cost = usd === undefined ? 'cost reported after each panel' : `~$${usd.toFixed(2)}/panel`;
+  return `${backend} (${modelId}${q}, ${cost})`;
 }
-
-export const CODEX_MIN_VERSION = '0.149.0';
-export const CODEX_INSTALL_HINT =
-  'For automatic images install codex: `npm i -g @openai/codex` then `codex login`. ' +
-  'Its image tool needs a paid ChatGPT plan (Plus or higher); Free or API-key accounts should keep using manual.';
 
 export const NOTES = {
   codex: 'codex (ChatGPT subscription)',
   manual: 'manual (no image CLI found: prompts will be written to files for you to run)',
 };
 
-function parseVersion(s) {
-  const m = String(s ?? '').match(/(\d+)\.(\d+)\.(\d+)/);
-  return m ? m.slice(1, 4).map(Number) : null;
-}
-function versionAtLeast(have, min) {
-  const a = parseVersion(have), b = parseVersion(min);
-  if (!a) return false;
-  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i];
-  return true;
-}
+function known(name) { return name === 'auto' || name in BACKENDS; }
 
-// Sync because `detect` is sync. Two cheap codex calls: `--version` (a bare binary on PATH is not
-// enough -- image_generation needs >= 0.149) and `login status` (installed-but-signed-out is the
-// most common "it's there but every panel fails" state). `codex login status` prints
-// "Logged in using ChatGPT" / "Not logged in" and mirrors that in its exit code.
-export function defaultProbe() {
-  const opts = { encoding: 'utf8', shell: isWin, timeout: 15000 };
-  const v = spawnSync('codex', ['--version'], opts);
-  const version = v.status === 0 ? (parseVersion(v.stdout)?.join('.') ?? null) : null;
-  const l = spawnSync('codex', ['login', 'status'], opts);
-  const out = `${l.stdout ?? ''}${l.stderr ?? ''}`;
-  const loggedIn = l.status === 0 && !/not logged in/i.test(out);
-  return { version, loggedIn };
-}
-
-// Human-readable reasons codex cannot be used right now; empty when it is ready.
-export function codexProblems({ version, loggedIn }) {
-  const problems = [];
-  if (!version) problems.push('`codex --version` failed');
-  else if (!versionAtLeast(version, CODEX_MIN_VERSION)) problems.push(`codex ${version} is too old (need >= ${CODEX_MIN_VERSION}): npm i -g @openai/codex@latest`);
-  if (!loggedIn) problems.push('codex is not logged in: run `codex login` (paid ChatGPT plan needed for images)');
-  return problems;
-}
-
-export function detectBackend({ pinned = 'auto', which = defaultWhich, probe = defaultProbe } = {}) {
-  if (pinned !== 'auto' && pinned !== 'codex') {
-    if (!(pinned in NOTES)) throw new Error(`Unknown backend "${pinned}". Use auto | codex | manual`);
-    return { name: pinned, note: 'manual (pinned in design.md)' };
+export function detectBackend({ pinned = 'auto', model = '', quality = 'medium', env = process.env, which = codex.defaultWhich, probe = codex.defaultProbe } = {}) {
+  if (!known(pinned)) throw new Error(`Unknown backend "${pinned}". Use auto | ${Object.keys(BACKENDS).join(' | ')}`);
+  if (pinned === 'manual') return { name: 'manual', note: 'manual (pinned in show-me-how.md)' };
+  const finish = (name, d) => {
+    if (!(name in MODELS)) return { name, note: d.note };
+    const id = resolveModel(name, model);
+    return { name, note: apiNote(name, id, quality), model: id };
+  };
+  if (pinned !== 'auto') {
+    const d = BACKENDS[pinned].detect({ which, probe, env });
+    if (!d.ready) throw new Error(`show-me-how.md pins backend: ${pinned} but ${d.problems.join('; ')}`);
+    return finish(pinned, d);
   }
-  if (!which('codex')) {
-    if (pinned === 'codex') throw new Error(`design.md pins backend: codex but \`codex\` was not found on PATH. ${CODEX_INSTALL_HINT}`);
-    return { name: 'manual', note: `manual (codex not found). ${CODEX_INSTALL_HINT}` };
+  const reasons = [];
+  for (const name of ORDER) {
+    const d = BACKENDS[name].detect({ which, probe, env });
+    if (d.ready) return finish(name, d);
+    reasons.push(d.note);
   }
-  const p = probe();
-  const problems = codexProblems(p);
-  if (!problems.length) return { name: 'codex', note: `codex ${p.version} (ChatGPT subscription)` };
-  if (pinned === 'codex') throw new Error(`design.md pins backend: codex but ${problems.join('; ')}`);
-  return { name: 'manual', note: `manual (codex found but ${problems.join('; ')})` };
+  return { name: 'manual', note: `manual (${reasons.join('; ')}). Run /show-me-how:init to set up automatic images.` };
 }
 
-// codex ships an image tool but does NOT expose it by default: a plain `codex exec` session only
-// gets shell/file tools, so asking it for a picture makes it try to *draw one with code*, which is
-// both wrong and slow. `--enable image_generation` (verified against codex 0.149.0, see
-// task-10-report.md) turns on the real `image_gen` tool plus `view_image`.
-const ENABLE_IMAGE_TOOL = ['--enable', 'image_generation'];
-
-// codex accepts exactly these four. A typo in design.md would otherwise reach codex as an opaque
-// config error mid-run, after the user has already waited on a generation, so reject it up front.
-const REASONING_EFFORTS = ['minimal', 'low', 'medium', 'high'];
-
-export function buildCodexArgs({ prompt, refs = [], out, cwd, codexModel = '', codexReasoning = 'low' }) {
-  // `-C` sets codex's working directory, and `-s workspace-write` grants write access to that whole
-  // tree. Handing it the repo root would let a drawing run modify any file in the user's repo, so
-  // the sandbox is scoped to the shot's own output folder -- the only place this run should write.
-  // Everything else therefore has to be absolute: once codex is chdir'd into the scratch folder, a relative `out`
-  // or `-i` ref would resolve against the wrong directory.
-  const absOut = resolve(cwd, out);
-  const absRefs = refs.map((r) => resolve(cwd, r));
-  const args = ['exec', '-C', dirname(absOut), '-s', 'workspace-write', '--skip-git-repo-check', ...ENABLE_IMAGE_TOOL];
-  for (const r of absRefs) args.push('-i', r);
-  // Drawing does not need deep reasoning; low effort is faster and cheaper. An empty model
-  // means "whatever codex is configured to use", so only pass -m when one was chosen.
-  if (codexModel) args.push('-m', codexModel);
-  const effort = codexReasoning || 'low';
-  if (!REASONING_EFFORTS.includes(effort)) {
-    throw new Error(`design.md: codex_reasoning "${effort}" is not a codex reasoning effort. Use ${REASONING_EFFORTS.join(' | ')}`);
-  }
-  // Also terminates the greedy `-i <FILE>...` list above, so the instruction below stays positional.
-  args.push('-c', `model_reasoning_effort=${effort}`);
-  // Three things this instruction has to get right, all learned the hard way (task-10-report.md):
-  //   1. Name the `$imagegen` skill explicitly. "Create an image" on its own reads as an ordinary
-  //      coding task and codex answers it by *drawing with code* (SVG/PIL), which is not what we want.
-  //   2. `image_gen` takes no destination argument -- it writes under the codex home and reports
-  //      the path back. The agent has to copy that file to `out`, so we ask for it in words.
-  //   3. Forbid the scripts/image_gen.py CLI fallback: it needs an OPENAI_API_KEY, which a
-  //      subscription user does not have, so falling back to it just burns a run.
-  const instruction =
-    `Use the $imagegen skill to generate exactly ONE image with its built-in image_gen tool. ` +
-    `The image_gen tool takes no destination argument. It reports the path it wrote (under the codex ` +
-    `home, e.g. ~/.codex/generated_images/); copy that file to exactly this path: "${absOut}" ` +
-    `(create parent folders if needed), then report that path. Landscape 16:9. ` +
-    (absRefs.length ? `The attached image(s) are style references for the mascot character -- reference role, not edit targets. ` : '') +
-    `Do not use the scripts/image_gen.py CLI fallback. Do not substitute SVG, HTML/CSS, canvas, ` +
-    `Python/PIL or any other code-drawn placeholder art; if image_gen is unavailable, stop and say so. ` +
-    `Do not write any other files. Do not ask questions. Image prompt follows.\n\n${prompt}`;
-  args.push(instruction);
-  return args;
-}
-
-export async function generate({ backend, prompt, refs = [], out, cwd = process.cwd(), run = defaultRun, codexModel = '', codexReasoning = 'low' }) {
+export async function generate({ backend, prompt, refs = [], out, cwd = process.cwd(), run, codexModel = '', codexReasoning = 'low', imageModel = '', imageApiQuality = 'medium', env = process.env, fetch }) {
   out = resolve(cwd, out);
   mkdirSync(dirname(out), { recursive: true });
-  if (backend === 'manual') {
-    // Resume path: the user took the prompt file to their own image tool and saved the result as
-    // `out`, then re-ran the same command. Picking the saved shot up here is what makes that loop
-    // work -- and the prompt file is deliberately left untouched, so a hand-edited prompt is not
-    // silently overwritten by the freshly rendered one on the pass that finally succeeds.
-    if (existsSync(out)) return { ok: true, backend, out, resumed: true };
-    const promptFile = out + '.prompt.txt';
-    writeFileSync(promptFile, `# Paste into ChatGPT / Gemini / any image tool. Save the result as:\n# ${out}\n\n${prompt}\n`);
-    return { ok: false, backend, out, promptFile };
+  const b = BACKENDS[backend];
+  if (!b) throw new Error(`Unknown backend ${backend}`);
+  if (backend in MODELS) {
+    const model = resolveModel(backend, imageModel);
+    const r = await b.generate({ prompt, refs, out, cwd, model, quality: imageApiQuality, env, fetch });
+    return { ...r, estimatedUsd: estimateUsd(backend, model, imageApiQuality) };
   }
-  if (backend === 'codex') {
-    const r = await run('codex', buildCodexArgs({ prompt, refs, out, cwd, codexModel, codexReasoning }), { cwd });
-    const ok = r.code === 0 && existsSync(out);
-    return { ok, backend, out, stderr: ok ? undefined : (r.stderr || r.stdout).slice(-2000) };
-  }
-  throw new Error(`Unknown backend ${backend}`);
+  return b.generate({ prompt, refs, out, cwd, run, codexModel, codexReasoning });
 }

@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { detectBackend, generate, buildCodexArgs, defaultWhich, codexProblems, CODEX_MIN_VERSION } from '../scripts/lib/backends.mjs';
+import { detectBackend, generate, buildCodexArgs, defaultWhich, codexProblems, CODEX_MIN_VERSION, MODELS, resolveModel, estimateUsd } from '../scripts/lib/backends.mjs';
 
 // true when `flag` appears immediately followed by `value` somewhere in argv
 const hasPair = (args, flag, value) => args.some((a, i) => a === flag && args[i + 1] === value);
@@ -248,18 +248,18 @@ test('backend.mjs CLI detect prints codex or manual note', () => {
   assert.match(out, /^backend: (codex \d+\.\d+\.\d+ \(ChatGPT subscription\)|manual \(codex (not found|found but)[^\n]*)\n$/);
 });
 
-// Helper: run the generate CLI in a temp cwd carrying the given design.md, returning parsed JSON.
+// Helper: run the generate CLI in a temp cwd carrying the given show-me-how.md, returning parsed JSON.
 // execFileSync throws on a non-zero exit, so reaching the JSON.parse at all proves exit code 0.
-function runGenerate(designMd) {
+function runGenerate(designMd, envOverride = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'smh-cli-'));
-  writeFileSync(join(dir, 'design.md'), designMd);
+  writeFileSync(join(dir, 'show-me-how.md'), designMd);
   const promptFile = join(dir, 'p.txt');
   writeFileSync(promptFile, 'a deadpan blob doing taxes');
   const out = join(dir, 'raw', '01.png');
   const stdout = execFileSync(process.execPath, [
     join(process.cwd(), 'scripts/backend.mjs'), 'generate',
     '--prompt-file', promptFile, '--out', out, '--cwd', dir,
-  ]).toString();
+  ], { env: { ...process.env, ...envOverride } }).toString();
   return { dir, out, result: JSON.parse(stdout) };
 }
 
@@ -284,7 +284,7 @@ test('backend.mjs CLI generate reports a bad codex_reasoning as ok:false and sti
 
 test('backend.mjs CLI generate writes a prompt file and exits 0 when pinned to manual', () => {
   const dir = mkdtempSync(join(tmpdir(), 'smh-cli-'));
-  writeFileSync(join(dir, 'design.md'), '## Output\nbackend: manual\n');
+  writeFileSync(join(dir, 'show-me-how.md'), '## Output\nbackend: manual\n');
   const promptFile = join(dir, 'p.txt');
   writeFileSync(promptFile, 'a deadpan blob doing taxes');
   const out = join(dir, 'raw', '01.png');
@@ -326,4 +326,103 @@ test('buildCodexArgs sandboxes codex to the output folder, not the repo root', (
   assert.equal(args[1], '-C');
   assert.equal(args[2], dirname(out));
   assert.notEqual(args[2], resolve('/w'));
+});
+
+const noCodex = { which: () => false, probe: () => { throw new Error('must not probe'); } };
+
+test('auto: codex wins over API keys when it is ready', () => {
+  const r = detectBackend({ which: (c) => c === 'codex', probe: ready, env: { GEMINI_API_KEY: 'g', OPENAI_API_KEY: 'o' } });
+  assert.equal(r.name, 'codex');
+});
+
+test('auto: GEMINI_API_KEY beats OPENAI_API_KEY when codex is absent', () => {
+  const r = detectBackend({ ...noCodex, env: { GEMINI_API_KEY: 'g', OPENAI_API_KEY: 'o' } });
+  assert.equal(r.name, 'gemini-api');
+  assert.match(r.note, /gemini-api \(gemini-3\.1-flash-image, ~\$0\.07\/panel\)/);
+});
+
+test('auto: OPENAI_API_KEY alone picks openai-api with the configured model and quality', () => {
+  const r = detectBackend({ ...noCodex, env: { OPENAI_API_KEY: 'o' }, model: 'gpt-image-1-mini', quality: 'low' });
+  assert.equal(r.name, 'openai-api');
+  assert.match(r.note, /openai-api \(gpt-image-1-mini low, ~\$0\.01\/panel\)/);
+});
+
+test('auto: nothing available lists what each candidate needs and points at /init', () => {
+  const r = detectBackend({ ...noCodex, env: {} });
+  assert.equal(r.name, 'manual');
+  assert.match(r.note, /codex not found/);
+  assert.match(r.note, /GEMINI_API_KEY not set/);
+  assert.match(r.note, /OPENAI_API_KEY not set/);
+  assert.match(r.note, /\/show-me-how:init/);
+});
+
+test('pinned API backend without its key throws naming the variable', () => {
+  assert.throws(() => detectBackend({ pinned: 'gemini-api', env: {} }), /pins backend: gemini-api but GEMINI_API_KEY is not set/);
+  assert.throws(() => detectBackend({ pinned: 'openai-api', env: {} }), /pins backend: openai-api but OPENAI_API_KEY is not set/);
+});
+
+test('unknown image_model for the resolved backend throws before any generation', () => {
+  assert.throws(() => detectBackend({ pinned: 'gemini-api', env: { GEMINI_API_KEY: 'g' }, model: 'nope' }), /image_model "nope" is not a gemini-api model\. Use gemini-3\.1-flash-image \| gemini-3\.1-flash-lite-image \| gemini-3-pro-image/);
+  assert.throws(() => detectBackend({ pinned: 'openai-api', env: { OPENAI_API_KEY: 'o' }, model: 'gemini-3-pro-image' }), /is not a openai-api model/);
+});
+
+test('resolveModel and estimateUsd', () => {
+  assert.equal(resolveModel('gemini-api', ''), 'gemini-3.1-flash-image');
+  assert.equal(resolveModel('openai-api', ''), 'gpt-image-2');
+  assert.equal(estimateUsd('gemini-api', 'gemini-3.1-flash-lite-image'), 0.034);
+  assert.equal(estimateUsd('openai-api', 'gpt-image-2', 'high'), 0.30);
+  assert.equal(estimateUsd('codex', ''), undefined);
+  assert.ok(MODELS['gemini-api'].some((m) => m.default));
+});
+
+test('generate dispatches to gemini-api with the resolved model and reports estimatedUsd', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-'));
+  let seen;
+  const fetch = async (url, init) => { seen = { url, init }; return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: 'AAAA' } }] } }] }), text: async () => '' }; };
+  const r = await generate({ backend: 'gemini-api', prompt: 'p', out: 'raw/01.png', cwd: dir, imageModel: '', env: { GEMINI_API_KEY: 'k' }, fetch });
+  assert.equal(r.ok, true);
+  assert.equal(r.estimatedUsd, 0.067);
+  assert.match(seen.url, /gemini-3\.1-flash-image:generateContent$/);
+});
+
+test('generate dispatches to openai-api honouring imageApiQuality and reports estimatedUsd', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-'));
+  let seen;
+  const fetch = async (url, init) => { seen = { url, init }; return { ok: true, status: 200, json: async () => ({ data: [{ b64_json: 'AAAA' }] }), text: async () => '' }; };
+  const r = await generate({ backend: 'openai-api', prompt: 'p', out: 'raw/01.png', cwd: dir, imageModel: 'gpt-image-1-mini', imageApiQuality: 'low', env: { OPENAI_API_KEY: 'k' }, fetch });
+  assert.equal(r.estimatedUsd, 0.01);
+  assert.equal(JSON.parse(seen.init.body).quality, 'low');
+});
+
+test('codex and manual results carry no estimatedUsd', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-'));
+  const r = await generate({ backend: 'manual', prompt: 'p', out: 'raw/01.png', cwd: dir });
+  assert.equal(r.estimatedUsd, undefined);
+});
+
+test('backend.mjs CLI generate with a pinned gemini-api backend and no key reports ok:false naming the key, exit 0', () => {
+  const { result } = runGenerate('## Output\nbackend: gemini-api\n', { GEMINI_API_KEY: '' });
+  assert.equal(result.ok, false);
+  assert.match(result.stderr, /GEMINI_API_KEY is not set/);
+});
+
+test('auto: OPENROUTER_API_KEY is the last resort before manual, and any vendor/model id is accepted for it', () => {
+  const r = detectBackend({ ...noCodex, env: { OPENAI_API_KEY: 'o', OPENROUTER_API_KEY: 'r' } });
+  assert.equal(r.name, 'openai-api');
+  const o = detectBackend({ ...noCodex, env: { OPENROUTER_API_KEY: 'r' } });
+  assert.equal(o.name, 'openrouter');
+  assert.match(o.note, /openrouter \(google\/gemini-3\.1-flash-image, ~\$0\.07\/panel\)/);
+  assert.equal(resolveModel('openrouter', 'bytedance-seed/seedream-5-0-lite'), 'bytedance-seed/seedream-5-0-lite');
+  assert.match(detectBackend({ ...noCodex, env: { OPENROUTER_API_KEY: 'r' }, model: 'bytedance-seed/seedream-5-0-lite' }).note, /seedream-5-0-lite, cost reported after each panel\)/);
+  assert.throws(() => detectBackend({ ...noCodex, env: { OPENROUTER_API_KEY: 'r' }, model: 'gpt-image-2' }), /image_model "gpt-image-2" is not an openrouter model id \(expected vendor\/model/);
+  assert.match(detectBackend({ ...noCodex, env: {} }).note, /OPENROUTER_API_KEY not set/);
+});
+
+test('generate dispatches to openrouter and prefers the real usage cost over the estimate', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-'));
+  const fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: [{ b64_json: 'AAAA' }], usage: { cost: 0.05 } }), text: async () => '' });
+  const r = await generate({ backend: 'openrouter', prompt: 'p', out: 'raw/01.png', cwd: dir, imageModel: '', env: { OPENROUTER_API_KEY: 'k' }, fetch });
+  assert.equal(r.ok, true);
+  assert.equal(r.estimatedUsd, 0.067);
+  assert.equal(r.usd, 0.05);
 });

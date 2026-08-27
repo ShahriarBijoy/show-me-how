@@ -20,7 +20,7 @@ If you were not given one, build it first: read the files the user points at, wr
 
 `MODE` changes only one thing: `explain` echoes the finished doc in chat (step 6); `doc` prints its path. Both always save the file.
 
-Read once, before drawing: `references/style-dna.md`, `references/composition-patterns.md`, `references/prompt-template.md`. Read `references/qa-checklist.md` after the first image lands. Read `references/mascot-flow.md` only if `design.md` has no `## Mascot` section. Read `references/backends.md` whenever a generate call returns `ok:false`.
+Read once, before drawing: `references/style-dna.md`, `references/composition-patterns.md`, `references/prompt-template.md`. Read `references/qa-checklist.md` after the first image lands. Read `references/mascot-flow.md` only if `show-me-how.md` has no `## Mascot` section. Read `references/backends.md` whenever a generate call returns `ok:false`.
 
 `REPO` below is the absolute path of the git root (`git rev-parse --show-toplevel`). Run every command from there. Never stop the run because one panel failed — mark it pending and keep going.
 
@@ -28,8 +28,8 @@ Read once, before drawing: `references/style-dna.md`, `references/composition-pa
 
 Before any script call below: if `${CLAUDE_PLUGIN_ROOT}/node_modules/sharp` is missing, run `npm install --silent` with cwd `${CLAUDE_PLUGIN_ROOT}` first.
 
-1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/design.mjs" "REPO"` -> JSON (`mascot`, `font`, `colors`, `tone`, `output.docs`, `output.backend`, `output.imageFormat`). `EXT` = `output.imageFormat` (`webp` by default; `png` if the user set it). If `REPO/design.md` does not exist, say once: "No design.md found; using Flow + Caveat defaults. Run /show-me-how:init to customize."
-2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" detect --cwd "REPO"` -> prints `backend: ...`. Echo that line to the user verbatim; it already carries the install / login hint when codex is missing, outdated or signed out, so do not add advice of your own. If the command errors instead of printing `backend:`, show the error; it means `design.md` pins `codex` but codex is not usable (not installed, too old, or not logged in). Ask them to fix that or set `backend: auto`, then stop.
+1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/design.mjs" "REPO"` -> JSON (`file`, `mascot`, `font`, `colors`, `tone`, `output.docs`, `output.backend`, `output.imageFormat`). `EXT` = `output.imageFormat` (`webp` by default; `png` if the user set it). If `file` is `null`, say once: "No show-me-how.md found; using Flow + Caveat defaults. Run /show-me-how:init to customize." Trust `file`, not the disk: a repo's own unrelated `design.md` is not our config.
+2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" detect --cwd "REPO"` -> prints `backend: ...`. Echo that line to the user verbatim; it already carries the install / login hint when codex is missing, outdated or signed out, so do not add advice of your own. If the command errors instead of printing `backend:`, show the error; it means `show-me-how.md` pins a backend that is not usable (codex not installed / too old / signed out, an API key variable not set, or an unknown `image_model`). Show the error, ask them to fix it or set `backend: auto`, then stop.
 3. `node "${CLAUDE_PLUGIN_ROOT}/scripts/slug.mjs" "<TOPIC>"` -> `SLUG`.
    - `DIR` = `<design.output.docs>` joined with `SLUG` with exactly one `/` between them (`output.docs` may end in `/`) (e.g. `docs/show-me-how/label-overlay`), or `OUTDIR` if the brief block has one.
    - `DOC` = `DIR/SLUG.md` (e.g. `docs/show-me-how/label-overlay/label-overlay.md`).
@@ -69,7 +69,7 @@ NN  <beat>  <structure>   "<title>"
 Handle each result as its shell exits; do not wait for all of them before starting QA on the first.
 
 1. `ok:false` with `promptFile` (manual backend) — collect all such panels, then tell the user once: "Prompts saved to `<promptFile>` (one per panel). Paste each into ChatGPT/Gemini, save the image as `SCRATCH/NN.png`, then re-run the same slash command; saved panels are picked up and labelled." Mark each **pending**.
-2. `ok:false` with `stderr` (codex failed) — show the last 5 lines of `stderr`, then point the user at `SCRATCH/NN.prompt.txt` and the same save path with the same re-run line. Mark **pending**.
+2. `ok:false` with `stderr` (the backend failed) — show the last 5 lines of `stderr`, then point the user at `SCRATCH/NN.prompt.txt` and the same save path with the same re-run line. Mark **pending**.
 3. `ok:true` — view `SCRATCH/NN.png` with the Read tool and check it against every "Must pass" item in `references/qa-checklist.md`. If any fails, regenerate exactly once, in the background, without blocking other panels:
    - Append the matching line from "Iteration moves" in `references/qa-checklist.md` to the end of `SCRATCH/NN.prompt.txt`. For a decorative mascot, append the retry prompt from `references/prompt-template.md`. For text in the image, append a stronger no-text instruction — never the mascot-central retry text. If no move matches, append the failed "Must pass" line itself as an instruction.
    - The retry text is only ever **appended** to the original filled prompt; never sent alone.
@@ -83,7 +83,7 @@ Handle each result as its shell exits; do not wait for all of them before starti
    { "labels": [{ "text": "", "x": 0.0, "y": 0.0, "kind": "black" }],
      "arrows": [{ "from": [0.0, 0.0], "to": [0.0, 0.0], "kind": "flow" }] }
    ```
-   `x`/`y` are 0-1 fractions of width/height, placed in empty space next to the object they describe. The canvas is about 1672x941 and a label is centred on its `x`/`y`, so keep every centre within x 0.12-0.88 and y 0.08-0.94. `kind`: `black` (names), `flow` (movement), `warn` (the gotcha or result), `note` (side info). Max 5 labels, 2 arrows. Omit `colors`/`font` — the script fills them from `design.md`.
+   `x`/`y` are 0-1 fractions of width/height, placed in empty space next to the object they describe. The canvas is about 1672x941 and a label is centred on its `x`/`y`, so keep every centre within x 0.12-0.88 and y 0.08-0.94. `kind`: `black` (names), `flow` (movement), `warn` (the gotcha or result), `note` (side info). Max 5 labels, 2 arrows. Omit `colors`/`font` — the script fills them from `show-me-how.md`.
 2. Overlay:
    ```
    node "${CLAUDE_PLUGIN_ROOT}/scripts/label.mjs" --in "SCRATCH/NN.png" --labels "SCRATCH/NN.labels.json" --caption "<caption>" --out "DIR/NN.EXT" --design-cwd "REPO"
@@ -131,4 +131,4 @@ For a pending panel, write `![<title> — pending](<REL>/.show-me-how/SLUG/NN.pn
 1. If **no** panel is pending: delete `SCRATCH` (only `REPO/.show-me-how/SLUG`, never `.show-me-how` itself). If deleting fails, say so in one line and continue. If any panel is pending, keep `SCRATCH` and say it is kept for the re-run.
 2. `DIR` must now contain only `SLUG.md`, `SLUG.html` and `NN.EXT` files. List it. Delete only leftovers this plugin itself produces — `NN-*.png`, `NN-*.svg`, `README.md`, and a `raw/` folder from a v0.1 run. Anything else (other files, other folders) is the user's: leave it and tell them it is there.
 3. `MODE=explain`: print the full contents of `DOC` in chat. `MODE=doc`: do not.
-4. Print exactly: how many panels were produced, which backend was used, the path to `DOC` and to `SLUG.html` ("send this one to share"), and which panel numbers are pending with each one's prompt file — or "none pending". Then suggest, without editing anything: "Add `.show-me-how/` to your `.gitignore` to keep prompts and unlabelled generations out of the repo." Do not commit anything.
+4. Print exactly: how many panels were produced, which backend was used and, when any result carried `usd` or `estimatedUsd`, the sum as `~$X.XX` (say `charged` when every panel had `usd`, else `estimated, approx. list prices 2026-08`), the path to `DOC` and to `SLUG.html` ("send this one to share"), and which panel numbers are pending with each one's prompt file — or "none pending". Then suggest, without editing anything: "Add `.show-me-how/` to your `.gitignore` to keep prompts and unlabelled generations out of the repo." Do not commit anything.
