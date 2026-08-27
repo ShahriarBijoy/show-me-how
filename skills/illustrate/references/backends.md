@@ -18,7 +18,7 @@ Generate one panel (`<scratch>` = `<repo>/.show-me-how/<slug>`):
 ```
 node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" generate --prompt-file <scratch>/NN.prompt.txt --out <scratch>/NN.png --ref <img> [--ref <img>] --cwd <repo root>
 ```
-The CLI always exits 0; read success from the JSON `ok` field, never from the exit code.
+The CLI always exits 0; read success from the JSON `ok` field, never from the exit code. When run in the background, redirect stdout to `<scratch>/NN.result.json` and poll that file until the JSON line appears (a missing or empty file means still running) -- do not wait for a shell completion notification; it may never arrive.
 
 codex runs sandboxed to the panel's output folder; it cannot write elsewhere in your repo. The codex backend requires codex >= 0.149 (`--enable image_generation`, bundled `$imagegen` skill). It reads two optional `## Output` fields from `show-me-how.md`: `codex_model:` (empty = codex's own default; passed as `-m`) and `codex_reasoning:` (default `low`; passed as `-c model_reasoning_effort=`). These pick the codex *agent* model and how hard it thinks — the image model itself is chosen by codex's built-in `image_gen` tool and is not configurable here, so `low` is usually right and cheapest.
 
