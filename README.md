@@ -13,8 +13,12 @@ A Claude Code plugin that explains code, features and PRs as short mascot comics
 
 ## Why
 
+I have a bit of ADHD. A long design doc or a dense README is hard for me to get through, even when I care about what's in it; the attention runs out before the paragraphs do.
+
 ![Flow buried under an endless scroll of paragraphs](assets/readme/why/01.webp)
 Long docs lose the reader before the paragraph ends.
+
+A picture of the idea, with a mascot acting it out, works for me like nothing else: I get it in one glance and it sticks. That's what this tool is for — dev teams handing knowledge to each other: the teammate who joins next week, the reviewer with 10 minutes, and anyone who reads the way I do. Instead of a long document nobody finishes, you share a short storyboard.
 
 ![Flow hands a teammate a four-panel strip; the teammate gets it](assets/readme/why/02.webp)
 A short storyboard instead: the teammate gets it in one glance, and it sticks.
