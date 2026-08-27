@@ -40,9 +40,9 @@ claude --plugin-dir .
 
 | Command | Does | Example |
 |---|---|---|
-| `/show-me-how:init` | Sets up `design.md` (mascot, font, colors, tone, output folder) and draws one test image. | `/show-me-how:init` |
+| `/show-me-how:init` | Sets up `show-me-how.md` (mascot, font, colors, tone, output folder) and draws one test image. | `/show-me-how:init` |
 | `/show-me-how:explain <topic>` | Explains a feature or concept as a storybook — as many panels as the topic needs — shown in chat and saved. | `/show-me-how:explain label overlay` |
-| `/show-me-how:write-doc [path\|folder\|topic]` | Writes a storybook doc as `docs/show-me-how/<topic>/<topic>.md` (set `docs:` in design.md to move it). | `/show-me-how:write-doc scripts/` |
+| `/show-me-how:write-doc [path\|folder\|topic]` | Writes a storybook doc as `docs/show-me-how/<topic>/<topic>.md` (set `docs:` in show-me-how.md to move it). | `/show-me-how:write-doc scripts/` |
 | `/show-me-how:pr-review [pr\|url]` | Draws "the picture of what this PR does" — never posts or commits. | `/show-me-how:pr-review 412` |
 
 ## Backends
@@ -63,13 +63,13 @@ codex login          # opens a browser
 
 The plugin never installs codex by itself. `/show-me-how:init` checks for it and, if it's missing, too old or signed out, asks whether you want to set it up or stay on `manual`. Every command prints a `backend:` line with the same hint, so you're never left guessing why a run produced prompt files instead of pictures.
 
-Pin one instead of auto-detecting by setting `backend:` in `design.md` (`auto`, `codex`, or `manual`); `codex_model:` and `codex_reasoning:` in the same section tune which codex model runs the job and how hard it thinks (default: codex's own model at `low` effort).
+Pin one instead of auto-detecting by setting `backend:` in `show-me-how.md` (`auto`, `codex`, or `manual`); `codex_model:` and `codex_reasoning:` in the same section tune which codex model runs the job and how hard it thinks (default: codex's own model at `low` effort).
 
 If you have `openai/codex-plugin-cc` installed, `/codex:rescue` can run the same prompt; it's not required.
 
 ## Brand
 
-`design.md` at your repo root controls the look: mascot, font, colors, tone, output folder. Run `/show-me-how:init` to create it.
+`show-me-how.md` at your repo root controls the look: mascot, font, colors, tone, output folder. Run `/show-me-how:init` to create it. (Before 0.5 the file was called `design.md`; one that starts with `# show-me-how design` is still read, and any other `design.md` in your repo is ignored.)
 
 - Mascot: Flow (default) — small solid-black blob, deadpan — or bring your own: a text description plus 1-3 reference images.
 - Font for labels: Caveat (bundled, OFL), or a local `.ttf`/`.otf` path.
@@ -77,10 +77,10 @@ If you have `openai/codex-plugin-cc` installed, `/codex:rescue` can run the same
 
 ### Your own character, per project
 
-The character is read from the `design.md` in whichever repo you run the command in, so each project can have its own. Two ways to set it:
+The character is read from the `show-me-how.md` in whichever repo you run the command in, so each project can have its own. Two ways to set it:
 
-1. **Guided:** run `/show-me-how:init` in that repo. The first question offers Flow, a description of your own, or 1-3 reference images plus a description. It writes `design.md` and draws one test image so you see the character before a real doc.
-2. **By hand:** create or edit `design.md` at the repo root. The mascot section looks like this:
+1. **Guided:** run `/show-me-how:init` in that repo. The first question offers Flow, a description of your own, or 1-3 reference images plus a description. It writes `show-me-how.md` and draws one test image so you see the character before a real doc.
+2. **By hand:** create or edit `show-me-how.md` at the repo root. The mascot section looks like this:
 
 ```markdown
 ## Mascot
@@ -107,7 +107,7 @@ A silhouette that reads at small size (a blob, a box, a simple robot) works bett
 4. Draw: generate every panel at once, in parallel, with no text baked in.
 5. Label + write: overlay labels and a caption strip in your brand font, then write one storybook — `docs/show-me-how/<topic>/<topic>.md` with `01.webp`, `02.webp`… inline, plus `<topic>.html` with the panels embedded: one self-contained file you can send to anyone, no markdown viewer needed. Working files live in `.show-me-how/` and are removed when the run completes.
 
-Panels are saved as WebP at full generated size (about 45 KB each instead of ~700 KB as PNG, so a five-panel HTML is ~250 KB rather than 4-5 MB). Set `image_format: png` and `image_quality:` in the `## Output` section of `design.md` if you need something else.
+Panels are saved as WebP at full generated size (about 45 KB each instead of ~700 KB as PNG, so a five-panel HTML is ~250 KB rather than 4-5 MB). Set `image_format: png` and `image_quality:` in the `## Output` section of `show-me-how.md` if you need something else.
 
 ## Troubleshooting
 

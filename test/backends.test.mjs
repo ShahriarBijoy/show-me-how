@@ -252,7 +252,7 @@ test('backend.mjs CLI detect prints codex or manual note', () => {
 // execFileSync throws on a non-zero exit, so reaching the JSON.parse at all proves exit code 0.
 function runGenerate(designMd) {
   const dir = mkdtempSync(join(tmpdir(), 'smh-cli-'));
-  writeFileSync(join(dir, 'design.md'), designMd);
+  writeFileSync(join(dir, 'show-me-how.md'), designMd);
   const promptFile = join(dir, 'p.txt');
   writeFileSync(promptFile, 'a deadpan blob doing taxes');
   const out = join(dir, 'raw', '01.png');
@@ -284,7 +284,7 @@ test('backend.mjs CLI generate reports a bad codex_reasoning as ok:false and sti
 
 test('backend.mjs CLI generate writes a prompt file and exits 0 when pinned to manual', () => {
   const dir = mkdtempSync(join(tmpdir(), 'smh-cli-'));
-  writeFileSync(join(dir, 'design.md'), '## Output\nbackend: manual\n');
+  writeFileSync(join(dir, 'show-me-how.md'), '## Output\nbackend: manual\n');
   const promptFile = join(dir, 'p.txt');
   writeFileSync(promptFile, 'a deadpan blob doing taxes');
   const out = join(dir, 'raw', '01.png');

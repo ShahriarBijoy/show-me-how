@@ -20,7 +20,7 @@ If you were not given one, build it first: read the files the user points at, wr
 
 `MODE` changes only one thing: `explain` echoes the finished doc in chat (step 6); `doc` prints its path. Both always save the file.
 
-Read once, before drawing: `references/style-dna.md`, `references/composition-patterns.md`, `references/prompt-template.md`. Read `references/qa-checklist.md` after the first image lands. Read `references/mascot-flow.md` only if `design.md` has no `## Mascot` section. Read `references/backends.md` whenever a generate call returns `ok:false`.
+Read once, before drawing: `references/style-dna.md`, `references/composition-patterns.md`, `references/prompt-template.md`. Read `references/qa-checklist.md` after the first image lands. Read `references/mascot-flow.md` only if `show-me-how.md` has no `## Mascot` section. Read `references/backends.md` whenever a generate call returns `ok:false`.
 
 `REPO` below is the absolute path of the git root (`git rev-parse --show-toplevel`). Run every command from there. Never stop the run because one panel failed — mark it pending and keep going.
 
@@ -28,8 +28,8 @@ Read once, before drawing: `references/style-dna.md`, `references/composition-pa
 
 Before any script call below: if `${CLAUDE_PLUGIN_ROOT}/node_modules/sharp` is missing, run `npm install --silent` with cwd `${CLAUDE_PLUGIN_ROOT}` first.
 
-1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/design.mjs" "REPO"` -> JSON (`mascot`, `font`, `colors`, `tone`, `output.docs`, `output.backend`, `output.imageFormat`). `EXT` = `output.imageFormat` (`webp` by default; `png` if the user set it). If `REPO/design.md` does not exist, say once: "No design.md found; using Flow + Caveat defaults. Run /show-me-how:init to customize."
-2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" detect --cwd "REPO"` -> prints `backend: ...`. Echo that line to the user verbatim; it already carries the install / login hint when codex is missing, outdated or signed out, so do not add advice of your own. If the command errors instead of printing `backend:`, show the error; it means `design.md` pins `codex` but codex is not usable (not installed, too old, or not logged in). Ask them to fix that or set `backend: auto`, then stop.
+1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/design.mjs" "REPO"` -> JSON (`file`, `mascot`, `font`, `colors`, `tone`, `output.docs`, `output.backend`, `output.imageFormat`). `EXT` = `output.imageFormat` (`webp` by default; `png` if the user set it). If `file` is `null`, say once: "No show-me-how.md found; using Flow + Caveat defaults. Run /show-me-how:init to customize." Trust `file`, not the disk: a repo's own unrelated `design.md` is not our config.
+2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" detect --cwd "REPO"` -> prints `backend: ...`. Echo that line to the user verbatim; it already carries the install / login hint when codex is missing, outdated or signed out, so do not add advice of your own. If the command errors instead of printing `backend:`, show the error; it means `show-me-how.md` pins `codex` but codex is not usable (not installed, too old, or not logged in). Ask them to fix that or set `backend: auto`, then stop.
 3. `node "${CLAUDE_PLUGIN_ROOT}/scripts/slug.mjs" "<TOPIC>"` -> `SLUG`.
    - `DIR` = `<design.output.docs>` joined with `SLUG` with exactly one `/` between them (`output.docs` may end in `/`) (e.g. `docs/show-me-how/label-overlay`), or `OUTDIR` if the brief block has one.
    - `DOC` = `DIR/SLUG.md` (e.g. `docs/show-me-how/label-overlay/label-overlay.md`).
@@ -83,7 +83,7 @@ Handle each result as its shell exits; do not wait for all of them before starti
    { "labels": [{ "text": "", "x": 0.0, "y": 0.0, "kind": "black" }],
      "arrows": [{ "from": [0.0, 0.0], "to": [0.0, 0.0], "kind": "flow" }] }
    ```
-   `x`/`y` are 0-1 fractions of width/height, placed in empty space next to the object they describe. The canvas is about 1672x941 and a label is centred on its `x`/`y`, so keep every centre within x 0.12-0.88 and y 0.08-0.94. `kind`: `black` (names), `flow` (movement), `warn` (the gotcha or result), `note` (side info). Max 5 labels, 2 arrows. Omit `colors`/`font` — the script fills them from `design.md`.
+   `x`/`y` are 0-1 fractions of width/height, placed in empty space next to the object they describe. The canvas is about 1672x941 and a label is centred on its `x`/`y`, so keep every centre within x 0.12-0.88 and y 0.08-0.94. `kind`: `black` (names), `flow` (movement), `warn` (the gotcha or result), `note` (side info). Max 5 labels, 2 arrows. Omit `colors`/`font` — the script fills them from `show-me-how.md`.
 2. Overlay:
    ```
    node "${CLAUDE_PLUGIN_ROOT}/scripts/label.mjs" --in "SCRATCH/NN.png" --labels "SCRATCH/NN.labels.json" --caption "<caption>" --out "DIR/NN.EXT" --design-cwd "REPO"

@@ -107,16 +107,16 @@ export function codexProblems({ version, loggedIn }) {
 export function detectBackend({ pinned = 'auto', which = defaultWhich, probe = defaultProbe } = {}) {
   if (pinned !== 'auto' && pinned !== 'codex') {
     if (!(pinned in NOTES)) throw new Error(`Unknown backend "${pinned}". Use auto | codex | manual`);
-    return { name: pinned, note: 'manual (pinned in design.md)' };
+    return { name: pinned, note: 'manual (pinned in show-me-how.md)' };
   }
   if (!which('codex')) {
-    if (pinned === 'codex') throw new Error(`design.md pins backend: codex but \`codex\` was not found on PATH. ${CODEX_INSTALL_HINT}`);
+    if (pinned === 'codex') throw new Error(`show-me-how.md pins backend: codex but \`codex\` was not found on PATH. ${CODEX_INSTALL_HINT}`);
     return { name: 'manual', note: `manual (codex not found). ${CODEX_INSTALL_HINT}` };
   }
   const p = probe();
   const problems = codexProblems(p);
   if (!problems.length) return { name: 'codex', note: `codex ${p.version} (ChatGPT subscription)` };
-  if (pinned === 'codex') throw new Error(`design.md pins backend: codex but ${problems.join('; ')}`);
+  if (pinned === 'codex') throw new Error(`show-me-how.md pins backend: codex but ${problems.join('; ')}`);
   return { name: 'manual', note: `manual (codex found but ${problems.join('; ')})` };
 }
 
@@ -126,7 +126,7 @@ export function detectBackend({ pinned = 'auto', which = defaultWhich, probe = d
 // task-10-report.md) turns on the real `image_gen` tool plus `view_image`.
 const ENABLE_IMAGE_TOOL = ['--enable', 'image_generation'];
 
-// codex accepts exactly these four. A typo in design.md would otherwise reach codex as an opaque
+// codex accepts exactly these four. A typo in show-me-how.md would otherwise reach codex as an opaque
 // config error mid-run, after the user has already waited on a generation, so reject it up front.
 const REASONING_EFFORTS = ['minimal', 'low', 'medium', 'high'];
 
@@ -145,7 +145,7 @@ export function buildCodexArgs({ prompt, refs = [], out, cwd, codexModel = '', c
   if (codexModel) args.push('-m', codexModel);
   const effort = codexReasoning || 'low';
   if (!REASONING_EFFORTS.includes(effort)) {
-    throw new Error(`design.md: codex_reasoning "${effort}" is not a codex reasoning effort. Use ${REASONING_EFFORTS.join(' | ')}`);
+    throw new Error(`show-me-how.md: codex_reasoning "${effort}" is not a codex reasoning effort. Use ${REASONING_EFFORTS.join(' | ')}`);
   }
   // Also terminates the greedy `-i <FILE>...` list above, so the instruction below stays positional.
   args.push('-c', `model_reasoning_effort=${effort}`);
