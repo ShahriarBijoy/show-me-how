@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/ShahriarBijoy/show-me-how/compare/v0.4.1...v0.5.0) (2026-08-27)
+
+
+### Features
+
+* **backend:** API-key image backends (Gemini, OpenAI, OpenRouter); rename config to show-me-how.md ([#6](https://github.com/ShahriarBijoy/show-me-how/issues/6)) ([34ef287](https://github.com/ShahriarBijoy/show-me-how/commit/34ef28715ef89f0a60ec010b1dc84cb04f480e60))
+
+
+### Bug Fixes
+
+* **config:** rename design.md to show-me-how.md; ignore a repo's own ([34ef287](https://github.com/ShahriarBijoy/show-me-how/commit/34ef28715ef89f0a60ec010b1dc84cb04f480e60))
+
 ## [0.4.1](https://github.com/ShahriarBijoy/show-me-how/compare/v0.4.0...v0.4.1) (2026-08-26)
 
 
