@@ -7,17 +7,17 @@
 [![Tests](https://img.shields.io/badge/tests-node%3Atest-informational.svg)](test)
 [![Image backends](https://img.shields.io/badge/backends-codex%20%7C%20gemini--api%20%7C%20openai--api%20%7C%20openrouter%20%7C%20manual-lightgrey.svg)](skills/illustrate/references/backends.md)
 
-Explain code, features and PRs with mascot-illustrated plain-language docs. Hand-drawn style, your brand, your font.
-
-A Claude Code plugin. Point it at a feature, a folder, or a topic; it reads the code, breaks it into story beats (as many as it needs), has a mascot act them out in hand-drawn style, and writes a short storybook with the panels in sequence. Draws with a paid ChatGPT plan (via the Codex CLI), a Gemini / OpenAI / OpenRouter API key (a few cents per panel), or any image tool by hand.
+A Claude Code plugin that explains code, features and PRs as short mascot comics instead of walls of text. This README is one.
 
 ![example](examples/hero.png)
 
-## Why this exists
+## Why
 
-I have a bit of ADHD. A long design doc or a dense README is hard for me to get through, even when I care about what's in it; the attention runs out before the paragraphs do. A picture of the idea, with a mascot acting it out, works for me like nothing else: I get it in one glance and it sticks.
+![Flow buried under an endless scroll of paragraphs](assets/readme/why/01.webp)
+Long docs lose the reader before the paragraph ends.
 
-That's what this tool is for. It's aimed at dev teams: people working on different features of the same project, or on different projects, who need to hand knowledge to each other. Instead of sharing a long document nobody finishes, you share a short storyboard: three to six panels, one caption each, that explain the feature, the PR or the concept. It's for the teammate who joins next week, the reviewer with 10 minutes, and anyone who reads the way I do.
+![Flow hands a teammate a four-panel strip; the teammate gets it](assets/readme/why/02.webp)
+A short storyboard instead: the teammate gets it in one glance, and it sticks.
 
 ## Install
 
@@ -26,66 +26,56 @@ That's what this tool is for. It's aimed at dev teams: people working on differe
 /plugin install show-me-how@show-me-how
 ```
 
-The first run installs `sharp` into the plugin folder automatically. Requires Node >=20.9.
-
-From a clone instead (useful while hacking on the plugin):
-
-```bash
-git clone https://github.com/ShahriarBijoy/show-me-how.git
-cd show-me-how && npm install
-claude --plugin-dir .
-```
+Needs Node >=20.9; `sharp` installs itself on first run. From a clone: `git clone https://github.com/ShahriarBijoy/show-me-how.git && cd show-me-how && npm install && claude --plugin-dir .`
 
 ## Commands
 
 | Command | Does | Example |
 |---|---|---|
-| `/show-me-how:init` | Sets up `show-me-how.md` (mascot, font, colors, tone, output folder) and draws one test image. | `/show-me-how:init` |
-| `/show-me-how:explain <topic>` | Explains a feature or concept as a storybook — as many panels as the topic needs — shown in chat and saved. | `/show-me-how:explain label overlay` |
-| `/show-me-how:write-doc [path\|folder\|topic]` | Writes a storybook doc as `docs/show-me-how/<topic>/<topic>.md` (set `docs:` in show-me-how.md to move it). | `/show-me-how:write-doc scripts/` |
-| `/show-me-how:pr-review [pr\|url]` | Draws "the picture of what this PR does" — never posts or commits. | `/show-me-how:pr-review 412` |
+| `/show-me-how:init` | Sets up `show-me-how.md` (mascot, font, colors, backend) and draws one test image. | `/show-me-how:init` |
+| `/show-me-how:explain <topic>` | Explains a feature or concept as a storybook, in chat and on disk. | `/show-me-how:explain label overlay` |
+| `/show-me-how:write-doc [path\|folder\|topic]` | Writes the storybook to `docs/show-me-how/<topic>/`. | `/show-me-how:write-doc scripts/` |
+| `/show-me-how:pr-review [pr\|url]` | Draws what a PR does. Never posts or commits. | `/show-me-how:pr-review 412` |
+
+## How it works
+
+![Flow reads a stack of source files with a magnifying glass and writes a tiny brief](assets/readme/how/01.webp)
+1. Reads the files or commits you point at and writes a brief under 200 words.
+
+![Flow pins four sticky notes on a wall: setup, action, twist, payoff](assets/readme/how/02.webp)
+2. Turns the brief into beats — setup, action, twist, payoff — one panel each, no padding.
+
+![Flow paints four easels at once](assets/readme/how/03.webp)
+3. Generates every panel in parallel through the image backend, text-free.
+
+![Flow staples the labelled panels into one doc and posts a single HTML file](assets/readme/how/04.webp)
+4. Overlays labels and a caption in your brand font, then writes one markdown doc plus one self-contained HTML file.
+
+Output: `docs/show-me-how/<topic>/<topic>.md` with `01.webp`, `02.webp`… inline, plus `<topic>.html` with the panels embedded — one file you can send to anyone.
 
 ## Backends
 
-| Backend | Needs | Cost | How it's chosen |
-|---|---|---|---|
-| `codex` | [Codex CLI](https://github.com/openai/codex) >= 0.149 on PATH, signed in with a **paid ChatGPT plan** (Plus or higher) | covered by your ChatGPT plan | auto-detected when installed, current and logged in |
-| `gemini-api` | `GEMINI_API_KEY` in your environment ([get a key](https://aistudio.google.com/apikey)) | ~$0.03-0.13 per panel (Nano Banana 2 family; no free tier for image models) | auto-detected when the variable is set |
-| `openai-api` | `OPENAI_API_KEY` in your environment ([get a key](https://platform.openai.com/api-keys)) | ~$0.01-0.30 per panel (`gpt-image-2` default; `gpt-image-1-mini` is the budget option) | auto-detected when the variable is set |
-| `openrouter` | `OPENROUTER_API_KEY` in your environment ([get a key](https://openrouter.ai/keys)) | vendor list price per panel (~$0.03-0.10); one key covers the four curated picks (Nano Banana 2, GPT Image 2, Seedream 5.0 Pro, Nano Banana 2 Lite) plus 40+ other models, and every run reports the real charge | auto-detected when the variable is set |
-| `manual` | any image tool you already use (ChatGPT, Gemini, ...) | none | the fallback; a prompt file is written for you to paste and save back |
+![Flow at a signpost with four roads: ChatGPT plan, API key, OpenRouter, by hand](assets/readme/setup/01.webp)
+Four ways to make pictures; `auto` takes the first road that is open.
 
-Detection order for `auto` is codex, then Gemini, then OpenAI, then OpenRouter. Prices are approximate list prices as of 2026-08; each run prints its estimate. `/show-me-how:init` walks you through the choice, with the cost of each model, when nothing is detected.
+`auto` picks the first one that works, top to bottom:
 
-Codex's built-in image tool is only available to paid ChatGPT logins; ChatGPT Free accounts and API-key logins can install codex but won't get images from it, so they should use `manual`.
+| Backend | Needs | ~Cost per panel |
+|---|---|---|
+| `codex` | `npm i -g @openai/codex && codex login` with a **paid ChatGPT plan** | included in the plan |
+| `gemini-api` | `GEMINI_API_KEY` ([key](https://aistudio.google.com/apikey)) | $0.03–0.13 · Nano Banana 2 |
+| `openai-api` | `OPENAI_API_KEY` ([key](https://platform.openai.com/api-keys)) | $0.01–0.30 · GPT Image 2 |
+| `openrouter` | `OPENROUTER_API_KEY` ([key](https://openrouter.ai/keys)) | $0.03–0.10 · Nano Banana 2, GPT Image 2, Seedream 5.0 Pro, 40+ more; real charge reported |
+| `manual` | nothing | free · paste the prompt file into any image tool, save the result back |
 
-Installing codex, if you have a paid plan:
+Pin one with `backend:` in `show-me-how.md`; `image_model:` picks the model. `/show-me-how:init` shows the cost of each choice. Prices are list prices as of 2026-08.
 
-```bash
-npm i -g @openai/codex
-codex login          # opens a browser
-```
+## Your own mascot
 
-The plugin never installs codex by itself. `/show-me-how:init` checks for it and, if it's missing, too old or signed out, asks whether you want to set it up or stay on `manual`. Every command prints a `backend:` line with the same hint, so you're never left guessing why a run produced prompt files instead of pictures.
+![Flow swaps its own silhouette for a robot on a mascot sheet](assets/readme/setup/02.webp)
+Describe your character once; every panel from then on stars it instead of Flow.
 
-Pin one instead of auto-detecting by setting `backend:` in `show-me-how.md` (`auto`, `codex`, `gemini-api`, `openai-api`, `openrouter`, or `manual`); `image_model:` and `image_api_quality:` pick the API model and (OpenAI) quality tier; `codex_model:` and `codex_reasoning:` in the same section tune which codex model runs the job and how hard it thinks (default: codex's own model at `low` effort).
-
-If you have `openai/codex-plugin-cc` installed, `/codex:rescue` can run the same prompt; it's not required.
-
-## Brand
-
-`show-me-how.md` at your repo root controls the look: mascot, font, colors, tone, output folder. Run `/show-me-how:init` to create it. (Before 0.5 the file was called `design.md`; one that starts with `# show-me-how design` is still read, and any other `design.md` in your repo is ignored.)
-
-- Mascot: Flow (default) — small solid-black blob, deadpan — or bring your own: a text description plus 1-3 reference images.
-- Font for labels: Caveat (bundled, OFL), or a local `.ttf`/`.otf` path.
-- Colors, tone, and the docs output folder are also editable fields.
-
-### Your own character, per project
-
-The character is read from the `show-me-how.md` in whichever repo you run the command in, so each project can have its own. Two ways to set it:
-
-1. **Guided:** run `/show-me-how:init` in that repo. The first question offers Flow, a description of your own, or 1-3 reference images plus a description. It writes `show-me-how.md` and draws one test image so you see the character before a real doc.
-2. **By hand:** create or edit `show-me-how.md` at the repo root. The mascot section looks like this:
+`show-me-how.md` at the repo root (run `/show-me-how:init`, or write it by hand):
 
 ```markdown
 ## Mascot
@@ -93,42 +83,15 @@ name: Pixel
 description: a squat grey robot on tank treads, one big round lens for an eye, stubby claw arms; calm, methodical
 references:
   - brand/pixel-front.png
-  - brand/pixel-working.png
 never: smiling, humanoid face, wheels instead of treads, standing idle
 ```
 
-- `name` and `description` go verbatim into every image prompt ("Pixel must PERFORM the core action"), so describe shape, eyes, limbs and expression concretely.
-- `references` are optional image paths relative to the repo root, passed to the backend as style anchors. Drop the list to rely on text only.
-- `never` matters as much as `description`: it is what stops the model drifting into a generic cute mascot.
-- Delete any line to fall back to the default.
-
-A silhouette that reads at small size (a blob, a box, a simple robot) works better than a detailed character, because the mascot is drawn *doing* something in thin line art with no colour fill.
-
-## How it works
-
-1. Understand: read the topic's source files or commits, write a short brief.
-2. Beats: turn it into a storyboard — setup, action, twist, payoff — one panel per beat, as many as the topic needs.
-3. Panel list: print the planned panels and captions before drawing.
-4. Draw: generate every panel at once, in parallel, with no text baked in.
-5. Label + write: overlay labels and a caption strip in your brand font, then write one storybook — `docs/show-me-how/<topic>/<topic>.md` with `01.webp`, `02.webp`… inline, plus `<topic>.html` with the panels embedded: one self-contained file you can send to anyone, no markdown viewer needed. Working files live in `.show-me-how/` and are removed when the run completes.
-
-Panels are saved as WebP at full generated size (about 45 KB each instead of ~700 KB as PNG, so a five-panel HTML is ~250 KB rather than 4-5 MB). Set `image_format: png` and `image_quality:` in the `## Output` section of `show-me-how.md` if you need something else.
+`description` and `never` go into every prompt; `references` are optional images used as style anchors. A silhouette that reads small (blob, box, simple robot) works best. Fonts, colors and the output folder live in the same file. (Before 0.5 this file was `design.md`; a legacy one starting with `# show-me-how design` still loads, and any other `design.md` is ignored.)
 
 ## Troubleshooting
 
-**macOS: labels come out in Helvetica, not Caveat.** sharp's macOS build resolves fonts through CoreText and ignores the bundled font file, so the font has to be installed for your user once. `/show-me-how:init` offers to do this; by hand:
-
-```sh
-node "<plugin dir>/scripts/font.mjs" install     # copies the label font into ~/Library/Fonts and re-checks
-# or simply: cp "<plugin dir>/assets/fonts/Caveat-Regular.ttf" ~/Library/Fonts/
-```
-
-`label.mjs` detects the fallback and prints the same hint, so a run never silently ships the wrong font. `node "<plugin dir>/scripts/font.mjs" check` tells you where you stand. The `Fontconfig error: Cannot load default config file` line sharp prints on macOS is harmless.
-
-v1.1 roadmap: Google Font downloads and in-image labels.
+**macOS labels render in Helvetica instead of Caveat** — sharp resolves fonts through CoreText, so the font must be installed once for your user. `/show-me-how:init` offers to; by hand: `node "<plugin dir>/scripts/font.mjs" install`.
 
 ## Credits
 
-The illustration method (cognitive anchors, shot lists, the "mascot performs the action" rule, style DNA, composition patterns, QA checklist) is adapted from **Ian Xiaohei Illustrations** by Ian (伊恩): https://github.com/helloianneo/ian-xiaohei-illustrations (MIT). Flow, the default mascot, is original to show-me-how.
-
-MIT licensed. See [NOTICE.md](NOTICE.md) for full attribution.
+The illustration method is adapted from **Ian Xiaohei Illustrations** by Ian (伊恩): https://github.com/helloianneo/ian-xiaohei-illustrations (MIT). Flow, the default mascot, is original to show-me-how. MIT licensed; see [NOTICE.md](NOTICE.md).
