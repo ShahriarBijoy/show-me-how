@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { detectBackend, generate, buildCodexArgs, defaultWhich, codexProblems, CODEX_MIN_VERSION } from '../scripts/lib/backends.mjs';
+import { detectBackend, generate, buildCodexArgs, defaultWhich, codexProblems, CODEX_MIN_VERSION, MODELS, resolveModel, estimateUsd } from '../scripts/lib/backends.mjs';
 
 // true when `flag` appears immediately followed by `value` somewhere in argv
 const hasPair = (args, flag, value) => args.some((a, i) => a === flag && args[i + 1] === value);
@@ -326,4 +326,51 @@ test('buildCodexArgs sandboxes codex to the output folder, not the repo root', (
   assert.equal(args[1], '-C');
   assert.equal(args[2], dirname(out));
   assert.notEqual(args[2], resolve('/w'));
+});
+
+const noCodex = { which: () => false, probe: () => { throw new Error('must not probe'); } };
+
+test('auto: codex wins over API keys when it is ready', () => {
+  const r = detectBackend({ which: (c) => c === 'codex', probe: ready, env: { GEMINI_API_KEY: 'g', OPENAI_API_KEY: 'o' } });
+  assert.equal(r.name, 'codex');
+});
+
+test('auto: GEMINI_API_KEY beats OPENAI_API_KEY when codex is absent', () => {
+  const r = detectBackend({ ...noCodex, env: { GEMINI_API_KEY: 'g', OPENAI_API_KEY: 'o' } });
+  assert.equal(r.name, 'gemini-api');
+  assert.match(r.note, /gemini-api \(gemini-3\.1-flash-image, ~\$0\.07\/panel\)/);
+});
+
+test('auto: OPENAI_API_KEY alone picks openai-api with the configured model and quality', () => {
+  const r = detectBackend({ ...noCodex, env: { OPENAI_API_KEY: 'o' }, model: 'gpt-image-1-mini', quality: 'low' });
+  assert.equal(r.name, 'openai-api');
+  assert.match(r.note, /openai-api \(gpt-image-1-mini low, ~\$0\.01\/panel\)/);
+});
+
+test('auto: nothing available lists what each candidate needs and points at /init', () => {
+  const r = detectBackend({ ...noCodex, env: {} });
+  assert.equal(r.name, 'manual');
+  assert.match(r.note, /codex not found/);
+  assert.match(r.note, /GEMINI_API_KEY not set/);
+  assert.match(r.note, /OPENAI_API_KEY not set/);
+  assert.match(r.note, /\/show-me-how:init/);
+});
+
+test('pinned API backend without its key throws naming the variable', () => {
+  assert.throws(() => detectBackend({ pinned: 'gemini-api', env: {} }), /pins backend: gemini-api but GEMINI_API_KEY is not set/);
+  assert.throws(() => detectBackend({ pinned: 'openai-api', env: {} }), /pins backend: openai-api but OPENAI_API_KEY is not set/);
+});
+
+test('unknown image_model for the resolved backend throws before any generation', () => {
+  assert.throws(() => detectBackend({ pinned: 'gemini-api', env: { GEMINI_API_KEY: 'g' }, model: 'nope' }), /image_model "nope" is not a gemini-api model\. Use gemini-3\.1-flash-image \| gemini-3\.1-flash-lite-image \| gemini-3-pro-image/);
+  assert.throws(() => detectBackend({ pinned: 'openai-api', env: { OPENAI_API_KEY: 'o' }, model: 'gemini-3-pro-image' }), /is not a openai-api model/);
+});
+
+test('resolveModel and estimateUsd', () => {
+  assert.equal(resolveModel('gemini-api', ''), 'gemini-3.1-flash-image');
+  assert.equal(resolveModel('openai-api', ''), 'gpt-image-2');
+  assert.equal(estimateUsd('gemini-api', 'gemini-3.1-flash-lite-image'), 0.034);
+  assert.equal(estimateUsd('openai-api', 'gpt-image-2', 'high'), 0.30);
+  assert.equal(estimateUsd('codex', ''), undefined);
+  assert.ok(MODELS['gemini-api'].some((m) => m.default));
 });
