@@ -58,11 +58,12 @@ NN  <beat>  <structure>   "<title>"
 
 1. For every panel, fill every `{slot}` of the template in `references/prompt-template.md` (including `{previous_panel}`) and write the result to `SCRATCH/NN.prompt.txt`.
 2. Skip any panel whose `SCRATCH/NN.png` already exists (the user saved it by hand after a manual run); it goes straight to step 4.
-3. For all remaining panels, start the generate commands **in the same turn, each in the background** (Bash `run_in_background: true`), so they run concurrently:
+3. For all remaining panels, start the generate commands **in the same turn, each in the background** (Bash `run_in_background: true`), so they run concurrently. Redirect each one's stdout to its own result file:
    ```
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" generate --prompt-file "SCRATCH/NN.prompt.txt" --out "SCRATCH/NN.png" --ref "<ref1>" --ref "<ref2>" --cwd "REPO"
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" generate --prompt-file "SCRATCH/NN.prompt.txt" --out "SCRATCH/NN.png" --ref "<ref1>" --ref "<ref2>" --cwd "REPO" > "SCRATCH/NN.result.json"
    ```
-   Each command always exits 0. Read success from its JSON `ok` field, never from the exit code. Tell the user how many generations are running. Each background call returns a shell/task id. Wait for that shell to **exit** (use its completion notification or poll its output) before reading the JSON line. An empty or partial read means it is still running — never treat it as a failure.
+   Each command always exits 0. Read success from the JSON `ok` field in `SCRATCH/NN.result.json`, never from the exit code. Tell the user how many generations are running.
+4. **Do not end your turn while any generation is running.** Completion notifications for background shells are not guaranteed to reach you (they never reach a subagent), so never rely on them. Instead, poll: read every `SCRATCH/NN.result.json` that is still missing or empty (one Bash call can check all of them, e.g. `for f in SCRATCH/*.result.json; do echo "$f: $(cat "$f")"; done`), handle any that now contain a JSON line (step 3b), then check again. A generation takes 1-3 minutes; keep checking, as many times as it takes, until every panel has its JSON line. An empty or missing file means it is still running — never treat it as a failure, and never stop and say you are "waiting".
 
 ## 3b. Collect, in whatever order they finish
 
@@ -73,7 +74,7 @@ Handle each result as its shell exits; do not wait for all of them before starti
 3. `ok:true` — view `SCRATCH/NN.png` with the Read tool and check it against every "Must pass" item in `references/qa-checklist.md`. If any fails, regenerate exactly once, in the background, without blocking other panels:
    - Append the matching line from "Iteration moves" in `references/qa-checklist.md` to the end of `SCRATCH/NN.prompt.txt`. For a decorative mascot, append the retry prompt from `references/prompt-template.md`. For text in the image, append a stronger no-text instruction — never the mascot-central retry text. If no move matches, append the failed "Must pass" line itself as an instruction.
    - The retry text is only ever **appended** to the original filled prompt; never sent alone.
-   - Delete `SCRATCH/NN.png` first, so a failed retry cannot be reported as `ok:true` on the stale file, then run the step 3a.3 command again for that panel. If the retry is `ok:false`, handle it exactly like 3b.1/3b.2. Accept whatever the retry gives you. One retry per panel.
+   - Delete `SCRATCH/NN.png` and `SCRATCH/NN.result.json` first, so a failed retry cannot be reported as `ok:true` on the stale file, then run the step 3a.3 command again for that panel and poll its result file as in 3a.4. If the retry is `ok:false`, handle it exactly like 3b.1/3b.2. Accept whatever the retry gives you. One retry per panel.
 4. As soon as a panel's PNG is accepted, label it (step 4) — do not wait for the others.
 
 ## 4. Label (once per accepted panel)
