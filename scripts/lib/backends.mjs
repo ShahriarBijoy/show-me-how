@@ -3,13 +3,14 @@ import { dirname, resolve } from 'node:path';
 import * as codex from './backends/codex.mjs';
 import * as gemini from './backends/gemini.mjs';
 import * as openai from './backends/openai.mjs';
+import * as openrouter from './backends/openrouter.mjs';
 import * as manual from './backends/manual.mjs';
 
 export { defaultWhich, defaultRun, defaultProbe, codexProblems, buildCodexArgs, CODEX_MIN_VERSION, CODEX_INSTALL_HINT } from './backends/codex.mjs';
 
 // Detection order for `backend: auto`. Subscription first (no per-image charge), then the APIs.
-export const ORDER = ['codex', 'gemini-api', 'openai-api'];
-export const BACKENDS = { codex, 'gemini-api': gemini, 'openai-api': openai, manual };
+export const ORDER = ['codex', 'gemini-api', 'openai-api', 'openrouter'];
+export const BACKENDS = { codex, 'gemini-api': gemini, 'openai-api': openai, openrouter, manual };
 
 // Single source of truth for model ids and rough cost. Gemini: list price per 1K image.
 // OpenAI: token-priced; these are per-image figures at 1536x1024 with 1-3 reference images,
@@ -27,6 +28,17 @@ export const MODELS = {
     { id: 'gpt-image-1.5',    label: 'GPT Image 1.5',    usdPerPanel: { low: 0.02, medium: 0.10, high: 0.30 } },
     { id: 'gpt-image-1-mini', label: 'GPT Image 1 mini', usdPerPanel: { low: 0.01, medium: 0.02, high: 0.05 } },
   ],
+  // OpenRouter passes vendor list prices through. Only a curated few are priced here; any other
+  // `vendor/model` id from https://openrouter.ai/api/v1/images/models is accepted (the response
+  // reports the real cost either way).
+  openrouter: [
+    { id: 'google/gemini-3.1-flash-image',      label: 'Nano Banana 2',      usdPerPanel: 0.067, default: true },
+    { id: 'google/gemini-3.1-flash-lite-image', label: 'Nano Banana 2 Lite', usdPerPanel: 0.034 },
+    { id: 'openai/gpt-image-2',                 label: 'GPT Image 2',        usdPerPanel: 0.10 },
+    { id: 'openai/gpt-image-1-mini',            label: 'GPT Image 1 mini',   usdPerPanel: 0.02 },
+    { id: 'black-forest-labs/flux.2-pro',       label: 'FLUX.2 pro',         usdPerPanel: 0.03 },
+    { id: 'bytedance-seed/seedream-4.5',        label: 'Seedream 4.5',       usdPerPanel: 0.03 },
+  ],
 };
 
 // '' means the backend's default model. Unknown ids are rejected here, at detect time, so a typo
@@ -35,6 +47,10 @@ export function resolveModel(backend, imageModel = '') {
   const list = MODELS[backend];
   if (!list) return '';
   if (!imageModel) return list.find((m) => m.default).id;
+  if (backend === 'openrouter') {
+    if (!/^[\w.-]+\/[\w.:-]+$/.test(imageModel)) throw new Error(`show-me-how.md: image_model "${imageModel}" is not an openrouter model id (expected vendor/model, e.g. ${list.map((m) => m.id).slice(0, 2).join(' | ')})`);
+    return imageModel;
+  }
   if (!list.some((m) => m.id === imageModel)) {
     throw new Error(`show-me-how.md: image_model "${imageModel}" is not a ${backend} model. Use ${list.map((m) => m.id).join(' | ')}`);
   }
@@ -49,7 +65,9 @@ export function estimateUsd(backend, modelId, quality = 'medium') {
 
 function apiNote(backend, modelId, quality) {
   const q = backend === 'openai-api' ? ` ${quality}` : '';
-  return `${backend} (${modelId}${q}, ~$${estimateUsd(backend, modelId, quality).toFixed(2)}/panel)`;
+  const usd = estimateUsd(backend, modelId, quality);
+  const cost = usd === undefined ? 'cost reported after each panel' : `~$${usd.toFixed(2)}/panel`;
+  return `${backend} (${modelId}${q}, ${cost})`;
 }
 
 export const NOTES = {

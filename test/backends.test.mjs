@@ -405,3 +405,24 @@ test('backend.mjs CLI generate with a pinned gemini-api backend and no key repor
   assert.equal(result.ok, false);
   assert.match(result.stderr, /GEMINI_API_KEY is not set/);
 });
+
+test('auto: OPENROUTER_API_KEY is the last resort before manual, and any vendor/model id is accepted for it', () => {
+  const r = detectBackend({ ...noCodex, env: { OPENAI_API_KEY: 'o', OPENROUTER_API_KEY: 'r' } });
+  assert.equal(r.name, 'openai-api');
+  const o = detectBackend({ ...noCodex, env: { OPENROUTER_API_KEY: 'r' } });
+  assert.equal(o.name, 'openrouter');
+  assert.match(o.note, /openrouter \(google\/gemini-3\.1-flash-image, ~\$0\.07\/panel\)/);
+  assert.equal(resolveModel('openrouter', 'bytedance-seed/seedream-5-0-lite'), 'bytedance-seed/seedream-5-0-lite');
+  assert.match(detectBackend({ ...noCodex, env: { OPENROUTER_API_KEY: 'r' }, model: 'bytedance-seed/seedream-5-0-lite' }).note, /seedream-5-0-lite, cost reported after each panel\)/);
+  assert.throws(() => detectBackend({ ...noCodex, env: { OPENROUTER_API_KEY: 'r' }, model: 'gpt-image-2' }), /image_model "gpt-image-2" is not an openrouter model id \(expected vendor\/model/);
+  assert.match(detectBackend({ ...noCodex, env: {} }).note, /OPENROUTER_API_KEY not set/);
+});
+
+test('generate dispatches to openrouter and prefers the real usage cost over the estimate', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-'));
+  const fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: [{ b64_json: 'AAAA' }], usage: { cost: 0.05 } }), text: async () => '' });
+  const r = await generate({ backend: 'openrouter', prompt: 'p', out: 'raw/01.png', cwd: dir, imageModel: '', env: { OPENROUTER_API_KEY: 'k' }, fetch });
+  assert.equal(r.ok, true);
+  assert.equal(r.estimatedUsd, 0.067);
+  assert.equal(r.usd, 0.05);
+});

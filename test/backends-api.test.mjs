@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fetchWithTimeout, refsToParts, httpFailure, referencePreamble } from '../scripts/lib/backends/http.mjs';
 import * as gemini from '../scripts/lib/backends/gemini.mjs';
 import * as openai from '../scripts/lib/backends/openai.mjs';
+import * as openrouter from '../scripts/lib/backends/openrouter.mjs';
 
 const PNG_1x1 = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
 
@@ -126,4 +127,38 @@ test('openai generate maps a 401 to a key hint and a timeout to a timeout messag
   const slow = await openai.generate({ prompt: 'x', refs: [], out: join(dir, '02.png'), cwd: dir, model: 'gpt-image-2', quality: 'medium', env: { OPENAI_API_KEY: 'sk' }, fetch: never, timeoutMs: 10 });
   assert.equal(slow.ok, false);
   assert.match(slow.stderr, /timeout after 0s/);
+});
+
+test('openrouter generate posts JSON to /api/v1/images with data-URL references and 16:9, writes the image, and reports the real cost', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-or-'));
+  writeFileSync(join(dir, 'a.png'), PNG_1x1);
+  const fetch = fakeFetch(200, { data: [{ b64_json: PNG_1x1.toString('base64'), media_type: 'image/png' }], usage: { cost: 0.0412 } });
+  const out = join(dir, 'raw', '01.png');
+  const r = await openrouter.generate({ prompt: 'blob', refs: ['a.png'], out, cwd: dir, model: 'google/gemini-3.1-flash-image', env: { OPENROUTER_API_KEY: 'or' }, fetch });
+  assert.equal(r.ok, true);
+  assert.equal(r.usd, 0.0412);
+  assert.deepEqual(readFileSync(out), PNG_1x1);
+  const { url, init } = fetch.calls[0];
+  assert.equal(url, 'https://openrouter.ai/api/v1/images');
+  assert.equal(init.headers.Authorization, 'Bearer or');
+  assert.equal(init.headers['content-type'], 'application/json');
+  const body = JSON.parse(init.body);
+  assert.equal(body.model, 'google/gemini-3.1-flash-image');
+  assert.equal(body.aspect_ratio, '16:9');
+  assert.equal(body.resolution, '1K');
+  assert.equal(body.n, 1);
+  assert.match(body.prompt, /style references.*Landscape 16:9.*blob/s);
+  assert.deepEqual(body.input_references, [{ type: 'image_url', image_url: { url: `data:image/png;base64,${PNG_1x1.toString('base64')}` } }]);
+});
+
+test('openrouter generate omits input_references when there are no refs and maps a 401 to a key hint', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'smh-or-'));
+  const fetch = fakeFetch(200, { data: [{ b64_json: PNG_1x1.toString('base64') }] });
+  const r = await openrouter.generate({ prompt: 'blob', refs: [], out: join(dir, '01.png'), cwd: dir, model: 'openai/gpt-image-2', env: { OPENROUTER_API_KEY: 'or' }, fetch });
+  assert.equal(r.ok, true);
+  assert.equal(r.usd, undefined);
+  assert.equal('input_references' in JSON.parse(fetch.calls[0].init.body), false);
+  const bad = await openrouter.generate({ prompt: 'x', refs: [], out: join(dir, '02.png'), cwd: dir, model: 'openai/gpt-image-2', env: { OPENROUTER_API_KEY: 'or' }, fetch: fakeFetch(401, '{"error":{"message":"No auth credentials found"}}') });
+  assert.equal(bad.ok, false);
+  assert.match(bad.stderr, /HTTP 401.*No auth credentials.*check OPENROUTER_API_KEY/s);
 });

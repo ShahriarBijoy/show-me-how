@@ -5,7 +5,7 @@
 [![Node >=20.9](https://img.shields.io/badge/node-%3E%3D20.9-brightgreen.svg)](package.json)
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-D97757.svg)](https://code.claude.com/docs/en/plugins)
 [![Tests](https://img.shields.io/badge/tests-node%3Atest-informational.svg)](test)
-[![Image backends](https://img.shields.io/badge/backends-codex%20%7C%20gemini--api%20%7C%20openai--api%20%7C%20manual-lightgrey.svg)](skills/illustrate/references/backends.md)
+[![Image backends](https://img.shields.io/badge/backends-codex%20%7C%20gemini--api%20%7C%20openai--api%20%7C%20openrouter%20%7C%20manual-lightgrey.svg)](skills/illustrate/references/backends.md)
 
 Explain code, features and PRs with mascot-illustrated plain-language docs. Hand-drawn style, your brand, your font.
 
@@ -52,9 +52,10 @@ claude --plugin-dir .
 | `codex` | [Codex CLI](https://github.com/openai/codex) >= 0.149 on PATH, signed in with a **paid ChatGPT plan** (Plus or higher) | covered by your ChatGPT plan | auto-detected when installed, current and logged in |
 | `gemini-api` | `GEMINI_API_KEY` in your environment ([get a key](https://aistudio.google.com/apikey)) | ~$0.03-0.13 per panel (Nano Banana 2 family; no free tier for image models) | auto-detected when the variable is set |
 | `openai-api` | `OPENAI_API_KEY` in your environment ([get a key](https://platform.openai.com/api-keys)) | ~$0.01-0.30 per panel (`gpt-image-2` default; `gpt-image-1-mini` is the budget option) | auto-detected when the variable is set |
+| `openrouter` | `OPENROUTER_API_KEY` in your environment ([get a key](https://openrouter.ai/keys)) | vendor list price per panel; one key covers Gemini, GPT Image, FLUX, Seedream and more, and every run reports the real charge | auto-detected when the variable is set |
 | `manual` | any image tool you already use (ChatGPT, Gemini, ...) | none | the fallback; a prompt file is written for you to paste and save back |
 
-Detection order for `auto` is codex, then Gemini, then OpenAI. Prices are approximate list prices as of 2026-08; each run prints its estimate. `/show-me-how:init` walks you through the choice, with the cost of each model, when nothing is detected.
+Detection order for `auto` is codex, then Gemini, then OpenAI, then OpenRouter. Prices are approximate list prices as of 2026-08; each run prints its estimate. `/show-me-how:init` walks you through the choice, with the cost of each model, when nothing is detected.
 
 Codex's built-in image tool is only available to paid ChatGPT logins; ChatGPT Free accounts and API-key logins can install codex but won't get images from it, so they should use `manual`.
 
@@ -67,7 +68,7 @@ codex login          # opens a browser
 
 The plugin never installs codex by itself. `/show-me-how:init` checks for it and, if it's missing, too old or signed out, asks whether you want to set it up or stay on `manual`. Every command prints a `backend:` line with the same hint, so you're never left guessing why a run produced prompt files instead of pictures.
 
-Pin one instead of auto-detecting by setting `backend:` in `show-me-how.md` (`auto`, `codex`, `gemini-api`, `openai-api`, or `manual`); `image_model:` and `image_api_quality:` pick the API model and (OpenAI) quality tier; `codex_model:` and `codex_reasoning:` in the same section tune which codex model runs the job and how hard it thinks (default: codex's own model at `low` effort).
+Pin one instead of auto-detecting by setting `backend:` in `show-me-how.md` (`auto`, `codex`, `gemini-api`, `openai-api`, `openrouter`, or `manual`); `image_model:` and `image_api_quality:` pick the API model and (OpenAI) quality tier; `codex_model:` and `codex_reasoning:` in the same section tune which codex model runs the job and how hard it thinks (default: codex's own model at `low` effort).
 
 If you have `openai/codex-plugin-cc` installed, `/codex:rescue` can run the same prompt; it's not required.
 

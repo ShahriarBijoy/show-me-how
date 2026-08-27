@@ -24,11 +24,12 @@ deadpan, absurd, clean
 
 ## Output
 docs: docs/show-me-how/
-backend: auto      # auto | codex | gemini-api | openai-api | manual
+backend: auto      # auto | codex | gemini-api | openai-api | openrouter | manual
 codex_model:       # codex model for image generation; empty = codex's own default
 codex_reasoning: low   # codex reasoning effort: minimal | low | medium | high
 image_model:           # gemini-api: gemini-3.1-flash-image (default) | gemini-3.1-flash-lite-image | gemini-3-pro-image
                        # openai-api: gpt-image-2 (default) | gpt-image-1.5 | gpt-image-1-mini
+                       # openrouter: any vendor/model from openrouter.ai/api/v1/images/models, e.g. google/gemini-3.1-flash-image (default)
 image_api_quality: medium   # openai-api only: low | medium | high
 image_format: webp     # webp | png -- format of the finished panels (webp is ~16x smaller)
 image_quality: 80      # 1-100, lossy quality for webp; palette quality for png
