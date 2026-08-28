@@ -6,7 +6,7 @@ import * as openai from './backends/openai.mjs';
 import * as openrouter from './backends/openrouter.mjs';
 import * as manual from './backends/manual.mjs';
 
-export { defaultWhich, defaultRun, defaultProbe, codexProblems, buildCodexArgs, CODEX_MIN_VERSION, CODEX_INSTALL_HINT } from './backends/codex.mjs';
+export { defaultWhich, defaultRun, defaultProbe, codexProblems, buildCodexArgs, insideCodexSandbox, CODEX_MIN_VERSION, CODEX_INSTALL_HINT, CODEX_SANDBOX_HINT } from './backends/codex.mjs';
 
 // Detection order for `backend: auto`. Subscription first (no per-image charge), then the APIs.
 export const ORDER = ['codex', 'gemini-api', 'openai-api', 'openrouter'];

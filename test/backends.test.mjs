@@ -426,3 +426,18 @@ test('generate dispatches to openrouter and prefers the real usage cost over the
   assert.equal(r.estimatedUsd, 0.067);
   assert.equal(r.usd, 0.05);
 });
+
+// Inside Codex's default sandbox the network is off and `codex` is stripped from PATH, so a nested
+// generate can never work and "codex not found" sends the user to reinstall something they have.
+test('detect names the Codex sandbox when running inside it without codex on PATH', () => {
+  const r = detectBackend({ which: () => false, probe: () => { throw new Error('must not probe'); }, env: { CODEX_SANDBOX_NETWORK_DISABLED: '1' } });
+  assert.equal(r.name, 'manual');
+  assert.match(r.note, /Codex sandbox/i);
+  assert.match(r.note, /image_gen|approve|network/i);
+  assert.doesNotMatch(r.note, /npm i -g @openai\/codex/);
+});
+
+test('detect outside the sandbox keeps the plain install hint', () => {
+  const r = detectBackend({ which: () => false, probe: () => { throw new Error('must not probe'); }, env: {} });
+  assert.match(r.note, /codex not found/);
+});

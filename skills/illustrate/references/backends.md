@@ -1,6 +1,6 @@
 # Backends
 
-Run once per session: `node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" detect --cwd "REPO"` (`REPO` = the repo root) and echo its line to the user.
+Run once per session: `node "$PLUGIN/scripts/backend.mjs" detect --cwd "REPO"` (`REPO` = the repo root, `PLUGIN` = the plugin folder, see SKILL.md) and echo its line to the user.
 
 | Backend | When | Needs | Refs | Cost |
 |---|---|---|---|---|
@@ -16,9 +16,11 @@ Run once per session: `node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" detect -
 
 Generate one panel (`<scratch>` = `<repo>/.show-me-how/<slug>`):
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" generate --prompt-file <scratch>/NN.prompt.txt --out <scratch>/NN.png --ref <img> [--ref <img>] --cwd <repo root>
+node "$PLUGIN/scripts/backend.mjs" generate --prompt-file <scratch>/NN.prompt.txt --out <scratch>/NN.png --ref <img> [--ref <img>] --cwd <repo root>
 ```
 The CLI always exits 0; read success from the JSON `ok` field, never from the exit code. When run in the background, redirect stdout to `<scratch>/NN.result.json` and poll that file until the JSON line appears (a missing or empty file means still running) -- do not wait for a shell completion notification; it may never arrive.
+
+**Running inside Codex itself:** the outer session's default sandbox turns the network off and hides `codex` from nested commands, so `detect` prints `codex unavailable: running inside the Codex sandbox ...`. Use the harness's native `image_gen` tool instead (illustrate step 3a.3a; available when codex was started with `--enable image_generation`), or have the user approve running the generate command outside the sandbox. The API-key backends need network too, so the same applies to them.
 
 codex runs sandboxed to the panel's output folder; it cannot write elsewhere in your repo. The codex backend requires codex >= 0.149 (`--enable image_generation`, bundled `$imagegen` skill). It reads two optional `## Output` fields from `show-me-how.md`: `codex_model:` (empty = codex's own default; passed as `-m`) and `codex_reasoning:` (default `low`; passed as `-c model_reasoning_effort=`). These pick the codex *agent* model and how hard it thinks — the image model itself is chosen by codex's built-in `image_gen` tool and is not configurable here, so `low` is usually right and cheapest.
 

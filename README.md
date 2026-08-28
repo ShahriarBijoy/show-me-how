@@ -25,10 +25,42 @@ A short storyboard instead: the teammate gets it in one glance, and it sticks.
 
 ## Install
 
+One plugin, three harnesses. The skills and scripts are shared; only the install line differs.
+
+**Claude Code**
+
 ```
 /plugin marketplace add ShahriarBijoy/show-me-how
 /plugin install show-me-how@show-me-how
 ```
+
+**Codex CLI** (>= 0.149)
+
+```
+codex plugin marketplace add ShahriarBijoy/show-me-how
+codex plugin add show-me-how@show-me-how
+```
+
+Or by hand in `~/.codex/config.toml`:
+
+```toml
+[marketplaces.show-me-how]
+source_type = "git"
+source = "https://github.com/ShahriarBijoy/show-me-how.git"
+
+[plugins."show-me-how@show-me-how"]
+enabled = true
+```
+
+Codex draws with its own `image_gen` tool when you start it with `codex --enable image_generation`; without that flag it runs the same image script as Claude Code, which needs network approval from inside Codex's sandbox (see [Backends](#backends)).
+
+**OpenCode, Cursor, and any other agent that reads `SKILL.md`**
+
+```
+npx skills add ShahriarBijoy/show-me-how
+```
+
+This copies the `skills/` folder into the agent's skills directory; the scripts resolve their own location, so nothing else is needed.
 
 Needs Node >=20.9; `sharp` installs itself on first run. From a clone: `git clone https://github.com/ShahriarBijoy/show-me-how.git && cd show-me-how && npm install && claude --plugin-dir .`
 
@@ -73,6 +105,8 @@ Four ways to make pictures; `auto` takes the first road that is open.
 | `manual` | nothing | free · paste the prompt file into any image tool, save the result back |
 
 Pin one with `backend:` in `show-me-how.md`; `image_model:` picks the model. `/show-me-how:init` shows the cost of each choice. Prices are list prices as of 2026-08.
+
+**Inside Codex:** its default sandbox blocks network and hides the `codex` binary from nested commands, so the `codex` backend cannot be nested. Start Codex with `--enable image_generation` and the skill uses the native `image_gen` tool directly (same paid ChatGPT plan); otherwise approve running the generate command outside the sandbox when asked, or use `manual`.
 
 ## Your own mascot
 
