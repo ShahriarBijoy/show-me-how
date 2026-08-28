@@ -167,7 +167,7 @@ export function insideCodexSandbox(env = process.env) {
 
 export function detect({ which = defaultWhich, probe = defaultProbe, env = process.env } = {}) {
   if (!which('codex')) {
-    if (insideCodexSandbox(env)) return { ready: false, note: `codex unavailable: ${CODEX_SANDBOX_HINT}`, problems: [CODEX_SANDBOX_HINT] };
+    if (insideCodexSandbox(env)) return { ready: false, sandboxed: true, note: `codex unavailable: ${CODEX_SANDBOX_HINT}`, problems: [CODEX_SANDBOX_HINT] };
     return { ready: false, note: `codex not found. ${CODEX_INSTALL_HINT}`, problems: [`\`codex\` was not found on PATH. ${CODEX_INSTALL_HINT}`] };
   }
   const p = probe();

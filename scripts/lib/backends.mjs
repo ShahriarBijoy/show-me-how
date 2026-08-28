@@ -86,6 +86,11 @@ export function detectBackend({ pinned = 'auto', model = '', quality = 'medium',
   };
   if (pinned !== 'auto') {
     const d = BACKENDS[pinned].detect({ which, probe, env });
+    // A pin normally fails loudly: the user chose a backend and it is not usable, so they must fix
+    // config or environment. Inside the Codex sandbox there is nothing to fix -- the harness itself
+    // hides codex -- and the skill can still draw with the harness's native image tool, so report
+    // the same sandbox note the auto path prints and let the run continue.
+    if (!d.ready && d.sandboxed) return { name: 'manual', note: `manual (codex pinned in show-me-how.md, but ${d.note}). Run /show-me-how:init to set up automatic images.` };
     if (!d.ready) throw new Error(`show-me-how.md pins backend: ${pinned} but ${d.problems.join('; ')}`);
     return finish(pinned, d);
   }
