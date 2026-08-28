@@ -54,6 +54,8 @@ enabled = true
 
 In Codex, skills are called with `$`, not `/`: `$show-me-how:init`, `$show-me-how:explain label overlay`, or just say it in plain words. Codex draws with its own `image_gen` tool when you start it with `codex --enable image_generation`; without that flag it runs the same image script as Claude Code, which needs network approval from inside Codex's sandbox (see [Backends](#backends)).
 
+Two Codex-specific notes: it asks once per run to approve writing under the docs folder — say yes. And its `image_gen` tool keeps a PNG copy of every image it makes under `~/.codex/generated_images/` (Codex's own folder, not touched by this plugin); the finished panels in your docs folder are still WebP, so clear that folder whenever you like.
+
 **OpenCode, Cursor, and any other agent that reads `SKILL.md`**
 
 ```
