@@ -52,7 +52,7 @@ source = "https://github.com/ShahriarBijoy/show-me-how.git"
 enabled = true
 ```
 
-Codex draws with its own `image_gen` tool when you start it with `codex --enable image_generation`; without that flag it runs the same image script as Claude Code, which needs network approval from inside Codex's sandbox (see [Backends](#backends)).
+In Codex, skills are called with `$`, not `/`: `$show-me-how:init`, `$show-me-how:explain label overlay`, or just say it in plain words. Codex draws with its own `image_gen` tool when you start it with `codex --enable image_generation`; without that flag it runs the same image script as Claude Code, which needs network approval from inside Codex's sandbox (see [Backends](#backends)).
 
 **OpenCode, Cursor, and any other agent that reads `SKILL.md`**
 
