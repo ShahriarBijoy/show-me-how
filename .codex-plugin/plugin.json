@@ -1,0 +1,19 @@
+{
+  "name": "show-me-how",
+  "description": "Explain code, features and PRs with mascot-illustrated plain-language docs. Hand-drawn style, your brand, your font.",
+  "version": "0.5.1",
+  "author": {
+    "name": "Shahriar Bijoy"
+  },
+  "homepage": "https://github.com/ShahriarBijoy/show-me-how",
+  "repository": "https://github.com/ShahriarBijoy/show-me-how",
+  "license": "MIT",
+  "keywords": [
+    "illustration",
+    "documentation",
+    "mascot",
+    "explainer",
+    "codex"
+  ],
+  "skills": "./skills/"
+}

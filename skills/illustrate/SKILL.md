@@ -24,17 +24,19 @@ Read once, before drawing: `references/style-dna.md`, `references/composition-pa
 
 `REPO` below is the absolute path of the git root (`git rev-parse --show-toplevel`). Run every command from there. Never stop the run because one panel failed — mark it pending and keep going.
 
+`PLUGIN` is the plugin's install folder (the one holding `scripts/`, `assets/`, `skills/`). Resolve it once: if the `CLAUDE_PLUGIN_ROOT` environment variable is set (Claude Code), use that; otherwise it is two directories above this SKILL.md file (Codex, OpenCode and other harnesses). Shell note: on Windows your shell may be PowerShell — every command below is a plain `node ...` invocation that works in bash and PowerShell alike; where a loop is shown, both forms are given.
+
 ## 0. Resolve brand, backend, folders
 
-Before any script call below: if `${CLAUDE_PLUGIN_ROOT}/node_modules/sharp` is missing, run `npm install --silent` with cwd `${CLAUDE_PLUGIN_ROOT}` first.
+Before any script call below: if `$PLUGIN/node_modules/sharp` is missing, run `npm install --silent` with cwd `$PLUGIN` first.
 
-1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/design.mjs" "REPO"` -> JSON (`file`, `mascot`, `font`, `colors`, `tone`, `output.docs`, `output.backend`, `output.imageFormat`). `EXT` = `output.imageFormat` (`webp` by default; `png` if the user set it). If `file` is `null`, say once: "No show-me-how.md found; using Flow + Caveat defaults. Run /show-me-how:init to customize." Trust `file`, not the disk: a repo's own unrelated `design.md` is not our config.
-2. `node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" detect --cwd "REPO"` -> prints `backend: ...`. Echo that line to the user verbatim; it already carries the install / login hint when codex is missing, outdated or signed out, so do not add advice of your own. If the command errors instead of printing `backend:`, show the error; it means `show-me-how.md` pins a backend that is not usable (codex not installed / too old / signed out, an API key variable not set, or an unknown `image_model`). Show the error, ask them to fix it or set `backend: auto`, then stop.
-3. `node "${CLAUDE_PLUGIN_ROOT}/scripts/slug.mjs" "<TOPIC>"` -> `SLUG`.
+1. `node "$PLUGIN/scripts/design.mjs" "REPO"` -> JSON (`file`, `mascot`, `font`, `colors`, `tone`, `output.docs`, `output.backend`, `output.imageFormat`). `EXT` = `output.imageFormat` (`webp` by default; `png` if the user set it). If `file` is `null`, say once: "No show-me-how.md found; using Flow + Caveat defaults. Run /show-me-how:init to customize." Trust `file`, not the disk: a repo's own unrelated `design.md` is not our config.
+2. `node "$PLUGIN/scripts/backend.mjs" detect --cwd "REPO"` -> prints `backend: ...`. Echo that line to the user verbatim; it already carries the install / login hint when codex is missing, outdated or signed out, so do not add advice of your own. If the line contains `running inside the Codex sandbox` (pinned or not), that is expected inside Codex: continue, and draw with the native image tool in step 3a.3(a). If the command errors instead of printing `backend:`, show the error; it means `show-me-how.md` pins a backend that is not usable (codex not installed / too old / signed out, an API key variable not set, or an unknown `image_model`). Show the error, ask them to fix it or set `backend: auto`, then stop.
+3. `node "$PLUGIN/scripts/slug.mjs" "<TOPIC>"` -> `SLUG`.
    - `DIR` = `<design.output.docs>` joined with `SLUG` with exactly one `/` between them (`output.docs` may end in `/`) (e.g. `docs/show-me-how/label-overlay`), or `OUTDIR` if the brief block has one.
    - `DOC` = `DIR/SLUG.md` (e.g. `docs/show-me-how/label-overlay/label-overlay.md`).
    - `SCRATCH` = `REPO/.show-me-how/SLUG`. Create `DIR` and `SCRATCH` (`mkdir -p`).
-4. Mascot refs: `design.mascot.references` (repo-root-relative) if non-empty, else `${CLAUDE_PLUGIN_ROOT}/assets/flow/front.png`, `.../working.png`, `.../stuck.png`. Drop any path that does not exist; if none exist, pass no `--ref` at all — the character still comes from the prompt text.
+4. Mascot refs: `design.mascot.references` (repo-root-relative) if non-empty, else `$PLUGIN/assets/flow/front.png`, `.../working.png`, `.../stuck.png`. Drop any path that does not exist; if none exist, pass no `--ref` at all — the character still comes from the prompt text.
 
 ## 1. Beats
 
@@ -58,12 +60,20 @@ NN  <beat>  <structure>   "<title>"
 
 1. For every panel, fill every `{slot}` of the template in `references/prompt-template.md` (including `{previous_panel}`) and write the result to `SCRATCH/NN.prompt.txt`.
 2. Skip any panel whose `SCRATCH/NN.png` already exists (the user saved it by hand after a manual run); it goes straight to step 4.
-3. For all remaining panels, start the generate commands **in the same turn, each in the background** (Bash `run_in_background: true`), so they run concurrently. Redirect each one's stdout to its own result file:
+3. Pick **one** of these two ways to draw, for the whole run:
+
+   **(a) Native image tool.** If your harness gives you an image-generation tool directly (Codex: `image_gen` / `image_gen__imagegen`, present when codex runs with `--enable image_generation`), use it — no subprocess, no sandbox trouble. For each remaining panel: call the tool with the full text of `SCRATCH/NN.prompt.txt` as the prompt and the mascot refs from step 0.4 as reference images (if the tool accepts them), landscape 16:9 (about 1536x1024). Save or copy the returned image to `SCRATCH/NN.png`, then write `SCRATCH/NN.result.json` yourself with exactly `{"ok":true,"backend":"image_gen","out":"<absolute path of NN.png>"}`. If the tool fails for a panel, write `{"ok":false,"backend":"image_gen","out":"...","stderr":"<the error, one line>"}` instead. Run the panels concurrently if the harness allows; sequentially is fine. Tell the user the backend is `image_gen (native)`.
+
+   **(b) The script.** Otherwise start the generate commands **in the same turn, all concurrently, in the background** (Claude Code: Bash with `run_in_background: true`; other harnesses: your background-command feature, or in bash append `&` to each and launch them from one shell call). Redirect each one's stdout to its own result file:
    ```
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/backend.mjs" generate --prompt-file "SCRATCH/NN.prompt.txt" --out "SCRATCH/NN.png" --ref "<ref1>" --ref "<ref2>" --cwd "REPO" > "SCRATCH/NN.result.json"
+   node "$PLUGIN/scripts/backend.mjs" generate --prompt-file "SCRATCH/NN.prompt.txt" --out "SCRATCH/NN.png" --ref "<ref1>" --ref "<ref2>" --cwd "REPO" > "SCRATCH/NN.result.json"
    ```
-   Each command always exits 0. Read success from the JSON `ok` field in `SCRATCH/NN.result.json`, never from the exit code. Tell the user how many generations are running.
-4. **Do not end your turn while any generation is running.** Completion notifications for background shells are not guaranteed to reach you (they never reach a subagent), so never rely on them. Instead, poll: read every `SCRATCH/NN.result.json` that is still missing or empty (one Bash call can check all of them, e.g. `for f in SCRATCH/*.result.json; do echo "$f: $(cat "$f")"; done`), handle any that now contain a JSON line (step 3b), then check again. A generation takes 1-3 minutes; keep checking, as many times as it takes, until every panel has its JSON line. An empty or missing file means it is still running — never treat it as a failure, and never stop and say you are "waiting".
+   Each command always exits 0. Read success from the JSON `ok` field in `SCRATCH/NN.result.json`, never from the exit code. Tell the user how many generations are running. If step 0.2 said `codex unavailable: running inside the Codex sandbox`, the script cannot reach codex from here: use (a) if you have the tool; if not, ask the user to approve running the generate command outside the sandbox (network on), or fall through to manual.
+4. **Do not end your turn while any generation is running.** Completion notifications for background shells are not guaranteed to reach you (they never reach a subagent), so never rely on them. Instead, poll: read every `SCRATCH/NN.result.json` that is still missing or empty — one shell call can check all of them:
+   - bash: `for f in SCRATCH/*.result.json; do echo "$f: $(cat "$f")"; done`
+   - PowerShell: `Get-ChildItem SCRATCH/*.result.json | ForEach-Object { "$($_.Name): $(Get-Content $_ -Raw)" }`
+
+   Handle any that now contain a JSON line (step 3b), then check again. A generation takes 1-3 minutes; keep checking, as many times as it takes, until every panel has its JSON line. An empty or missing file means it is still running — never treat it as a failure, and never stop and say you are "waiting".
 
 ## 3b. Collect, in whatever order they finish
 
@@ -74,7 +84,7 @@ Handle each result as its shell exits; do not wait for all of them before starti
 3. `ok:true` — view `SCRATCH/NN.png` with the Read tool and check it against every "Must pass" item in `references/qa-checklist.md`. If any fails, regenerate exactly once, in the background, without blocking other panels:
    - Append the matching line from "Iteration moves" in `references/qa-checklist.md` to the end of `SCRATCH/NN.prompt.txt`. For a decorative mascot, append the retry prompt from `references/prompt-template.md`. For text in the image, append a stronger no-text instruction — never the mascot-central retry text. If no move matches, append the failed "Must pass" line itself as an instruction.
    - The retry text is only ever **appended** to the original filled prompt; never sent alone.
-   - Delete `SCRATCH/NN.png` and `SCRATCH/NN.result.json` first, so a failed retry cannot be reported as `ok:true` on the stale file, then run the step 3a.3 command again for that panel and poll its result file as in 3a.4. If the retry is `ok:false`, handle it exactly like 3b.1/3b.2. Accept whatever the retry gives you. One retry per panel.
+   - Delete `SCRATCH/NN.png` and `SCRATCH/NN.result.json` first, so a failed retry cannot be reported as `ok:true` on the stale file, then draw that panel again the same way as in step 3a.3 (native tool or script) and poll its result file as in 3a.4. If the retry is `ok:false`, handle it exactly like 3b.1/3b.2. Accept whatever the retry gives you. One retry per panel.
 4. As soon as a panel's PNG is accepted, label it (step 4) — do not wait for the others.
 
 ## 4. Label (once per accepted panel)
@@ -87,7 +97,7 @@ Handle each result as its shell exits; do not wait for all of them before starti
    `x`/`y` are 0-1 fractions of width/height, placed in empty space next to the object they describe. The canvas is about 1672x941 and a label is centred on its `x`/`y`, so keep every centre within x 0.12-0.88 and y 0.08-0.94. `kind`: `black` (names), `flow` (movement), `warn` (the gotcha or result), `note` (side info). Max 5 labels, 2 arrows. Omit `colors`/`font` — the script fills them from `show-me-how.md`.
 2. Overlay:
    ```
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/label.mjs" --in "SCRATCH/NN.png" --labels "SCRATCH/NN.labels.json" --caption "<caption>" --out "DIR/NN.EXT" --design-cwd "REPO"
+   node "$PLUGIN/scripts/label.mjs" --in "SCRATCH/NN.png" --labels "SCRATCH/NN.labels.json" --caption "<caption>" --out "DIR/NN.EXT" --design-cwd "REPO"
    ```
    `--caption` is the panel's one-line caption from step 2; the script adds a white strip below the picture with that line in the brand font. Pass it for every panel. The output format follows the `--out` extension (`EXT` from step 0.1); the finished panel is written in that format at the generated size (a WebP panel is ~45 KB against ~700 KB as PNG).
    The result is a JSON line. If it carries a `hint` field, the labels were drawn in the system font instead of the brand font (this happens on macOS until the font is installed for the user — see `scripts/font.mjs`). Show that `hint` line to the user **once** per run, keep going, and do not try to fix it yourself.
@@ -128,8 +138,8 @@ For a pending panel, write `![<title> — pending](<REL>/.show-me-how/SLUG/NN.pn
 
 ## 6. Export, clean up, finish
 
-0. Export a shareable copy: `node "${CLAUDE_PLUGIN_ROOT}/scripts/export.mjs" --doc "DOC"` writes `DIR/SLUG.html` with every panel inlined, so the storybook can be sent as one file and opened in any browser. Run it after every write of `DOC`, including re-runs.
+0. Export a shareable copy: `node "$PLUGIN/scripts/export.mjs" --doc "DOC"` writes `DIR/SLUG.html` with every panel inlined, so the storybook can be sent as one file and opened in any browser. Run it after every write of `DOC`, including re-runs.
 1. If **no** panel is pending: delete `SCRATCH` (only `REPO/.show-me-how/SLUG`, never `.show-me-how` itself). If deleting fails, say so in one line and continue. If any panel is pending, keep `SCRATCH` and say it is kept for the re-run.
 2. `DIR` must now contain only `SLUG.md`, `SLUG.html` and `NN.EXT` files. List it. Delete only leftovers this plugin itself produces — `NN-*.png`, `NN-*.svg`, `README.md`, and a `raw/` folder from a v0.1 run. Anything else (other files, other folders) is the user's: leave it and tell them it is there.
 3. `MODE=explain`: print the full contents of `DOC` in chat. `MODE=doc`: do not.
-4. Print exactly: how many panels were produced, which backend was used and, when any result carried `usd` or `estimatedUsd`, the sum as `~$X.XX` (say `charged` when every panel had `usd`, else `estimated, approx. list prices 2026-08`), the path to `DOC` and to `SLUG.html` ("send this one to share"), and which panel numbers are pending with each one's prompt file — or "none pending". Then suggest, without editing anything: "Add `.show-me-how/` to your `.gitignore` to keep prompts and unlabelled generations out of the repo." Do not commit anything.
+4. Print exactly: how many panels were produced, which backend was used (`image_gen (native)` for 3a.3a) and, when any result carried `usd` or `estimatedUsd`, the sum as `~$X.XX` (say `charged` when every panel had `usd`, else `estimated, approx. list prices 2026-08`), the path to `DOC` and to `SLUG.html` ("send this one to share"), and which panel numbers are pending with each one's prompt file — or "none pending". Then suggest, without editing anything: "Add `.show-me-how/` to your `.gitignore` to keep prompts and unlabelled generations out of the repo." Do not commit anything.

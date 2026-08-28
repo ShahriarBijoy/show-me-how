@@ -153,8 +153,21 @@ export function buildCodexArgs({ prompt, refs = [], out, cwd, codexModel = '', c
 export const name = 'codex';
 
 // Sync. `problems` is empty when codex is ready; `note` is what `backend.mjs detect` prints.
-export function detect({ which = defaultWhich, probe = defaultProbe } = {}) {
+// Codex's default sandbox (workspace-write) turns the network off and strips `codex` from PATH,
+// so a nested `codex exec` cannot run from inside a Codex session. Telling that user to reinstall
+// codex is wrong; they need the outer session to either approve network for the command or use its
+// own native `image_gen` tool (the illustrate skill prefers that when it is available).
+export const CODEX_SANDBOX_HINT =
+  'running inside the Codex sandbox, which blocks network and hides `codex` from nested commands. ' +
+  'Use the native `image_gen` tool (start codex with `--enable image_generation`), or approve running the generate command outside the sandbox.';
+
+export function insideCodexSandbox(env = process.env) {
+  return env.CODEX_SANDBOX_NETWORK_DISABLED === '1';
+}
+
+export function detect({ which = defaultWhich, probe = defaultProbe, env = process.env } = {}) {
   if (!which('codex')) {
+    if (insideCodexSandbox(env)) return { ready: false, sandboxed: true, note: `codex unavailable: ${CODEX_SANDBOX_HINT}`, problems: [CODEX_SANDBOX_HINT] };
     return { ready: false, note: `codex not found. ${CODEX_INSTALL_HINT}`, problems: [`\`codex\` was not found on PATH. ${CODEX_INSTALL_HINT}`] };
   }
   const p = probe();

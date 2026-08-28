@@ -12,14 +12,14 @@ const hasPair = (args, flag, value) => args.some((a, i) => a === flag && args[i 
 const ready = () => ({ version: CODEX_MIN_VERSION, loggedIn: true });
 
 test('detect prefers codex when present, current and logged in', () => {
-  const r = detectBackend({ which: (c) => c === 'codex', probe: ready });
+  const r = detectBackend({ env: {}, which: (c) => c === 'codex', probe: ready });
   assert.equal(r.name, 'codex');
   assert.match(r.note, /subscription/i);
   assert.ok(r.note.includes(CODEX_MIN_VERSION));
 });
 
 test('detect falls back to manual with an install hint when codex is missing', () => {
-  const r = detectBackend({ which: () => false, probe: () => { throw new Error('must not probe'); } });
+  const r = detectBackend({ env: {}, which: () => false, probe: () => { throw new Error('must not probe'); } });
   assert.equal(r.name, 'manual');
   assert.match(r.note, /codex not found/);
   assert.match(r.note, /npm i -g @openai\/codex/);
@@ -27,14 +27,14 @@ test('detect falls back to manual with an install hint when codex is missing', (
 });
 
 test('detect falls back to manual when codex is installed but not logged in', () => {
-  const r = detectBackend({ which: () => true, probe: () => ({ version: CODEX_MIN_VERSION, loggedIn: false }) });
+  const r = detectBackend({ env: {}, which: () => true, probe: () => ({ version: CODEX_MIN_VERSION, loggedIn: false }) });
   assert.equal(r.name, 'manual');
   assert.match(r.note, /codex found but/);
   assert.match(r.note, /codex login/);
 });
 
 test('detect falls back to manual when codex is too old', () => {
-  const r = detectBackend({ which: () => true, probe: () => ({ version: '0.120.3', loggedIn: true }) });
+  const r = detectBackend({ env: {}, which: () => true, probe: () => ({ version: '0.120.3', loggedIn: true }) });
   assert.equal(r.name, 'manual');
   assert.match(r.note, /0\.120\.3 is too old/);
   assert.match(r.note, /@openai\/codex@latest/);
@@ -48,10 +48,10 @@ test('codexProblems: newer versions pass, missing version fails', () => {
 });
 
 test('pinned backend wins even if missing (error surfaces)', () => {
-  assert.throws(() => detectBackend({ pinned: 'codex', which: () => false }), /codex.*not found.*npm i -g @openai\/codex/is);
-  assert.throws(() => detectBackend({ pinned: 'codex', which: () => true, probe: () => ({ version: CODEX_MIN_VERSION, loggedIn: false }) }), /pins backend: codex but.*codex login/s);
-  assert.equal(detectBackend({ pinned: 'manual', which: () => true }).name, 'manual');
-  assert.match(detectBackend({ pinned: 'manual', which: () => true }).note, /pinned/);
+  assert.throws(() => detectBackend({ env: {}, pinned: 'codex', which: () => false }), /codex.*not found.*npm i -g @openai\/codex/is);
+  assert.throws(() => detectBackend({ env: {}, pinned: 'codex', which: () => true, probe: () => ({ version: CODEX_MIN_VERSION, loggedIn: false }) }), /pins backend: codex but.*codex login/s);
+  assert.equal(detectBackend({ env: {}, pinned: 'manual', which: () => true }).name, 'manual');
+  assert.match(detectBackend({ env: {}, pinned: 'manual', which: () => true }).note, /pinned/);
   assert.throws(() => detectBackend({ pinned: 'dalle' }), /Unknown backend/);
 });
 
@@ -328,7 +328,7 @@ test('buildCodexArgs sandboxes codex to the output folder, not the repo root', (
   assert.notEqual(args[2], resolve('/w'));
 });
 
-const noCodex = { which: () => false, probe: () => { throw new Error('must not probe'); } };
+const noCodex = { env: {}, which: () => false, probe: () => { throw new Error('must not probe'); } };
 
 test('auto: codex wins over API keys when it is ready', () => {
   const r = detectBackend({ which: (c) => c === 'codex', probe: ready, env: { GEMINI_API_KEY: 'g', OPENAI_API_KEY: 'o' } });
@@ -425,4 +425,34 @@ test('generate dispatches to openrouter and prefers the real usage cost over the
   assert.equal(r.ok, true);
   assert.equal(r.estimatedUsd, 0.067);
   assert.equal(r.usd, 0.05);
+});
+
+// Inside Codex's default sandbox the network is off and `codex` is stripped from PATH, so a nested
+// generate can never work and "codex not found" sends the user to reinstall something they have.
+test('detect names the Codex sandbox when running inside it without codex on PATH', () => {
+  const r = detectBackend({ which: () => false, probe: () => { throw new Error('must not probe'); }, env: { CODEX_SANDBOX_NETWORK_DISABLED: '1' } });
+  assert.equal(r.name, 'manual');
+  assert.match(r.note, /Codex sandbox/i);
+  assert.match(r.note, /image_gen|approve|network/i);
+  assert.doesNotMatch(r.note, /npm i -g @openai\/codex/);
+});
+
+test('detect outside the sandbox keeps the plain install hint', () => {
+  const r = detectBackend({ which: () => false, probe: () => { throw new Error('must not probe'); }, env: {} });
+  assert.match(r.note, /codex not found/);
+});
+
+// Pinning codex normally fails loudly, but inside Codex's own sandbox the pin cannot be satisfied by
+// any config change and the skill can still draw with the harness's native image tool, so the run
+// must continue instead of stopping at step 0.2.
+test('pinned codex inside the Codex sandbox reports the sandbox instead of throwing', () => {
+  const r = detectBackend({ pinned: 'codex', which: () => false, probe: () => { throw new Error('must not probe'); }, env: { CODEX_SANDBOX_NETWORK_DISABLED: '1' } });
+  assert.equal(r.name, 'manual');
+  assert.match(r.note, /pinned/);
+  assert.match(r.note, /Codex sandbox/i);
+  assert.match(r.note, /image_gen/);
+});
+
+test('pinned codex outside the sandbox still throws when codex is missing', () => {
+  assert.throws(() => detectBackend({ pinned: 'codex', which: () => false, env: {} }), /pins backend: codex but/);
 });
